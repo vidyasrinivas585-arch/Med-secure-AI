@@ -1,0 +1,31 @@
+# Environment
+venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Model weights (large files)
+trained_model/*.h5
+trained_model/evaluation/
+
+# Uploads and generated reports
+static/uploads/*
+static/reports/*
+!static/uploads/.gitkeep
+!static/reports/.gitkeep
+
+# Dataset (too large for git)
+dataset/genuine/*
+dataset/counterfeit/*
+!dataset/genuine/.gitkeep
+!dataset/counterfeit/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log

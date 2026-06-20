@@ -1,0 +1,296 @@
+/* ===================================================================
+   MedSecure AI — Main Stylesheet
+   Design: Medical-grade dark navy + clinical white + vivid accent
+   =================================================================== */
+
+/* ── Imports ──────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+/* ── Custom Properties ────────────────────────────────────────────── */
+:root {
+  --brand-navy:    #0D1B2A;
+  --brand-blue:    #1A73E8;
+  --brand-accent:  #00C896;
+  --brand-red:     #D93025;
+  --brand-amber:   #F59E0B;
+
+  --surface-1:     #FFFFFF;
+  --surface-2:     #F8F9FA;
+  --surface-3:     #EEF2F7;
+
+  --text-primary:  #1A202C;
+  --text-muted:    #6B7280;
+  --text-light:    #9CA3AF;
+
+  --radius-card:   1rem;
+  --radius-pill:   50rem;
+
+  --shadow-card:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.08);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+  background: #FAFBFD;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-weight: 700;
+}
+
+/* ── Navbar ───────────────────────────────────────────────────────── */
+.bg-brand {
+  background: var(--brand-navy) !important;
+}
+
+.navbar-brand .text-accent { color: var(--brand-accent); }
+.brand-shield { font-size: 1.4rem; }
+
+.navbar-nav .nav-link {
+  color: rgba(255,255,255,.75) !important;
+  font-weight: 500;
+  padding: .5rem .85rem !important;
+  border-radius: .5rem;
+  transition: background .2s, color .2s;
+}
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+  color: #fff !important;
+  background: rgba(255,255,255,.1);
+}
+
+.btn-accent {
+  background: var(--brand-accent);
+  color: var(--brand-navy);
+  font-weight: 600;
+  border: none;
+}
+.btn-accent:hover {
+  background: #00a87e;
+  color: var(--brand-navy);
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.hero-section {
+  background: linear-gradient(135deg, #EEF2FF 0%, #F0FFF4 100%);
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-graphic {
+  position: relative;
+  display: inline-block;
+}
+.hero-circle {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(26,115,232,.12), rgba(0,200,150,.12));
+  border: 2px solid rgba(26,115,232,.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  animation: pulse-ring 3s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(26,115,232,.2); }
+  50%       { box-shadow: 0 0 0 20px rgba(26,115,232,.0); }
+}
+
+/* ── Stats Band ───────────────────────────────────────────────────── */
+.stats-band {
+  background: var(--surface-1);
+  border-top: 1px solid #E2E8F0;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.stat-card {
+  padding: 1.2rem 1rem;
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  transition: transform .2s;
+}
+.stat-card:hover { transform: translateY(-2px); }
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+  line-height: 1;
+}
+.stat-label {
+  font-size: .78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: .3rem;
+}
+
+/* ── Feature Cards ────────────────────────────────────────────────── */
+.feature-card {
+  background: var(--surface-1);
+  border-radius: var(--radius-card);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-card);
+  transition: transform .25s, box-shadow .25s;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.12);
+}
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: .75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Background soft variants */
+.bg-primary-soft   { background: rgba(26,115,232,.1); }
+.bg-success-soft   { background: rgba(16,185,129,.1); }
+.bg-danger-soft    { background: rgba(217,48,37,.1); }
+.bg-warning-soft   { background: rgba(245,158,11,.1); }
+.bg-secondary-soft { background: rgba(107,114,128,.1); }
+.bg-info-soft      { background: rgba(6,182,212,.1); }
+.bg-accent-soft    { background: rgba(0,200,150,.12); }
+.text-accent       { color: var(--brand-accent) !important; }
+
+/* ── Timeline ─────────────────────────────────────────────────────── */
+.timeline { position: relative; padding-left: 2rem; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--brand-blue), var(--brand-accent));
+}
+.timeline-step {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  position: relative;
+}
+.timeline-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .85rem;
+  flex-shrink: 0;
+  margin-left: -2rem;
+  z-index: 1;
+}
+.timeline-body {
+  padding-top: .25rem;
+  background: var(--surface-1);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.25rem;
+  flex: 1;
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Upload / Drop Zone ───────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed #CBD5E1;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--brand-blue);
+  background: rgba(26,115,232,.04);
+}
+
+/* ── Processing Overlay ───────────────────────────────────────────── */
+.processing-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13,27,42,.88);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Result Page ──────────────────────────────────────────────────── */
+.result-banner {
+  border-left: 6px solid rgba(255,255,255,.4);
+}
+.score-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+.result-table td { padding: .65rem .5rem; border-bottom: 1px solid #F1F5F9; }
+.result-table tr:last-child td { border-bottom: none; }
+
+.risk-badge {
+  font-size: 1.1rem;
+  padding: .6rem 2rem;
+}
+
+/* ── History Table ────────────────────────────────────────────────── */
+.table thead th {
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  border-bottom: 2px solid #E2E8F0;
+}
+.table tbody tr:hover { background: var(--surface-2); }
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+.footer-band {
+  background: var(--surface-2);
+  border-top: 1px solid #E2E8F0;
+}
+
+/* ── Utility helpers ──────────────────────────────────────────────── */
+.fs-7 { font-size: .85rem; }
+.border-dashed { border-style: dashed !important; }
+.border-2 { border-width: 2px !important; }
+.rounded-4 { border-radius: var(--radius-card) !important; }
+
+/* ── Cards / shadows ──────────────────────────────────────────────── */
+.card { box-shadow: var(--shadow-card); }
+
+/* ── Progress bars ────────────────────────────────────────────────── */
+.progress { background: var(--surface-3); }
+
+/* ── Responsive tweaks ────────────────────────────────────────────── */
+@media (max-width: 575px) {
+  .stat-value { font-size: 1.5rem; }
+  .result-banner h2 { font-size: 1.4rem; }
+  .score-circle { width: 66px; height: 66px; }
+  .score-circle .fs-4 { font-size: 1.1rem !important; }
+}

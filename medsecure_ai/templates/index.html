@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}MedSecure AI — Home{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ───────────────────────────────────────────────────────────────── -->
+<section class="hero-section py-5">
+  <div class="container py-4">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <span class="badge bg-accent-soft text-accent mb-3 px-3 py-2 fs-7">
+          <i class="bi bi-cpu me-1"></i>AI-Powered Detection
+        </span>
+        <h1 class="display-4 fw-bold lh-sm mb-4">
+          Detect Counterfeit<br/>
+          <span class="text-gradient">Medicines Instantly</span>
+        </h1>
+        <p class="lead text-muted mb-4">
+          MedSecure AI uses <strong>MobileNetV2 deep learning</strong>, OCR, and packaging
+          analysis to verify medicine authenticity in seconds — supporting both
+          <strong>English</strong> and <strong>Kannada</strong>.
+        </p>
+        <div class="d-flex gap-3 flex-wrap">
+          <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg px-4 shadow-sm">
+            <i class="bi bi-shield-check me-2"></i>Analyze a Medicine
+          </a>
+          <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-lg px-4">
+            <i class="bi bi-clock-history me-2"></i>View History
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-6 text-center">
+        <div class="hero-graphic">
+          <div class="hero-circle">
+            <span style="font-size:6rem">🛡️</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Stats Bar ───────────────────────────────────────────────────────────── -->
+<section class="stats-band py-4">
+  <div class="container">
+    <div class="row g-3 text-center">
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">{{ stats.total }}</div>
+          <div class="stat-label">Total Scans</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-value text-success" id="stat-genuine">{{ stats.genuine }}</div>
+          <div class="stat-label">Genuine Detected</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-value text-danger" id="stat-counterfeit">{{ stats.counterfeit }}</div>
+          <div class="stat-label">Counterfeit Flagged</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-value text-primary" id="stat-avg">{{ stats.avg_score }}%</div>
+          <div class="stat-label">Avg. Authenticity</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Crisis Context ──────────────────────────────────────────────────────── -->
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row justify-content-center mb-4">
+      <div class="col-lg-7 text-center">
+        <h2 class="fw-bold mb-3">The 1-in-5 Drug Crisis</h2>
+        <p class="text-muted">
+          The WHO estimates that <strong>1 in 5 medicines</strong> in low- and middle-income
+          countries is substandard or falsified. MedSecure AI helps patients, pharmacists,
+          and regulators fight back.
+        </p>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="feature-card h-100">
+          <div class="feature-icon bg-primary-soft text-primary">
+            <i class="bi bi-eye fs-3"></i>
+          </div>
+          <h5 class="mt-3 mb-2">Computer Vision</h5>
+          <p class="text-muted small">MobileNetV2 transfer learning analyses packaging
+          patterns to detect visual inconsistencies invisible to the human eye.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="feature-card h-100">
+          <div class="feature-icon bg-success-soft text-success">
+            <i class="bi bi-file-text fs-3"></i>
+          </div>
+          <h5 class="mt-3 mb-2">OCR Extraction</h5>
+          <p class="text-muted small">EasyOCR reads medicine name, manufacturer, batch
+          number, and expiry date — in both English and Kannada script.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="feature-card h-100">
+          <div class="feature-icon bg-warning-soft text-warning">
+            <i class="bi bi-graph-up fs-3"></i>
+          </div>
+          <h5 class="mt-3 mb-2">Authenticity Score</h5>
+          <p class="text-muted small">A 0–100 composite score from AI confidence, OCR
+          quality and packaging analysis drives clear Low / Medium / High risk decisions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ────────────────────────────────────────────────────────── -->
+<section class="py-5">
+  <div class="container">
+    <h2 class="fw-bold text-center mb-5">How It Works</h2>
+    <div class="row g-0 justify-content-center">
+      <div class="col-lg-8">
+        <div class="timeline">
+          <div class="timeline-step">
+            <div class="timeline-icon bg-primary text-white">1</div>
+            <div class="timeline-body">
+              <h6 class="fw-bold">Upload Medicine Image</h6>
+              <p class="text-muted small mb-0">Photograph the medicine package and upload it.
+              Select your preferred language — English or Kannada.</p>
+            </div>
+          </div>
+          <div class="timeline-step">
+            <div class="timeline-icon bg-info text-white">2</div>
+            <div class="timeline-body">
+              <h6 class="fw-bold">AI Analysis</h6>
+              <p class="text-muted small mb-0">MobileNetV2 classifies the image while
+              EasyOCR extracts text. OpenCV analyses packaging quality.</p>
+            </div>
+          </div>
+          <div class="timeline-step">
+            <div class="timeline-icon bg-success text-white">3</div>
+            <div class="timeline-body">
+              <h6 class="fw-bold">Instant Results</h6>
+              <p class="text-muted small mb-0">Receive prediction, authenticity score,
+              risk level, and a downloadable PDF report — in seconds.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-4">
+      <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg px-5">
+        <i class="bi bi-play-circle me-2"></i>Get Started
+      </a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Live stats refresh every 60 seconds
+  setInterval(async () => {
+    const res = await fetch('/api/stats');
+    const s = await res.json();
+    document.getElementById('stat-total').textContent = s.total;
+    document.getElementById('stat-genuine').textContent = s.genuine;
+    document.getElementById('stat-counterfeit').textContent = s.counterfeit;
+    document.getElementById('stat-avg').textContent = s.avg_score + '%';
+  }, 60000);
+</script>
+{% endblock %}

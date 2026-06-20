@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}MedSecure AI — Analysis Result{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+
+    <!-- Back / Download actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Analyze Another
+      </a>
+      <a href="{{ url_for('download_report', report_id=report_id) }}"
+         class="btn btn-success btn-sm">
+        <i class="bi bi-file-pdf me-1"></i>Download PDF Report
+      </a>
+    </div>
+
+    <!-- ── Prediction Banner ───────────────────────────────────────────────── -->
+    {% set pred_class = 'success' if report.prediction == 'Genuine' else 'danger' %}
+    {% set pred_icon  = 'bi-shield-check' if report.prediction == 'Genuine' else 'bi-shield-x' %}
+    <div class="result-banner bg-{{ pred_class }} text-white rounded-4 p-4 mb-4 shadow">
+      <div class="row align-items-center g-3">
+        <div class="col-auto">
+          <i class="bi {{ pred_icon }}" style="font-size:3rem"></i>
+        </div>
+        <div class="col">
+          <h2 class="fw-bold mb-1">{{ report.prediction | upper }}</h2>
+          <p class="mb-0 opacity-75">{{ report.recommendation }}</p>
+        </div>
+        <div class="col-auto text-end">
+          <div class="score-circle bg-white text-{{ pred_class }}">
+            <span class="fw-bold fs-4">{{ report.authenticity_score | int }}%</span>
+            <div class="small">Authentic</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- ── Left column: Medicine details ─────────────────────────────── -->
+      <div class="col-lg-7">
+
+        <!-- Medicine Information -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
+            <h5 class="fw-bold"><i class="bi bi-capsule text-primary me-2"></i>Medicine Information</h5>
+          </div>
+          <div class="card-body px-4 pb-4">
+            <table class="table table-borderless result-table mb-0">
+              <tbody>
+                <tr>
+                  <td class="text-muted fw-medium" style="width:45%">Medicine Name</td>
+                  <td class="fw-semibold">{{ report.medicine_name }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted fw-medium">Manufacturer</td>
+                  <td>{{ report.manufacturer }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted fw-medium">Batch Number</td>
+                  <td><code>{{ report.batch_number }}</code></td>
+                </tr>
+                <tr>
+                  <td class="text-muted fw-medium">Mfg. Date</td>
+                  <td>{{ report.manufacturing_date }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted fw-medium">Expiry Date</td>
+                  <td>{{ report.expiry_date }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted fw-medium">Expiry Status</td>
+                  <td>
+                    {% if report.expiry_status == 'Valid' %}
+                      <span class="badge bg-success-soft text-success">✅ {{ report.expiry_status }}</span>
+                    {% elif report.expiry_status == 'Expired' %}
+                      <span class="badge bg-danger-soft text-danger">❌ {{ report.expiry_status }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary-soft text-secondary">{{ report.expiry_status }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% if report.days_remaining %}
+                <tr>
+                  <td class="text-muted fw-medium">Days Remaining</td>
+                  <td>{{ report.days_remaining }} days ({{ report.months_remaining }} months)</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td class="text-muted fw-medium">Language</td>
+                  <td>{{ 'English' if report.language == 'en' else 'ಕನ್ನಡ (Kannada)' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Uploaded image -->
+        {% if report.image_path %}
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
+            <h5 class="fw-bold"><i class="bi bi-image text-primary me-2"></i>Uploaded Image</h5>
+          </div>
+          <div class="card-body text-center pb-4">
+            <img src="{{ url_for('static', filename=report.image_path.replace('static/', '').replace('static\\', '')) }}"
+                 alt="Medicine Package"
+                 class="img-fluid rounded-3 shadow-sm"
+                 style="max-height:260px">
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <!-- ── Right column: Scores ───────────────────────────────────────── -->
+      <div class="col-lg-5">
+
+        <!-- Risk Level -->
+        {% set risk_map = {'Low': 'success', 'Medium': 'warning', 'High': 'danger'} %}
+        {% set risk_col = risk_map.get(report.risk_level, 'secondary') %}
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-body p-4 text-center">
+            <h6 class="text-muted fw-medium mb-3">Risk Level</h6>
+            <div class="risk-badge bg-{{ risk_col }}-soft text-{{ risk_col }} rounded-pill px-4 py-2 fs-5 fw-bold d-inline-block">
+              {{ report.risk_level }} Risk
+            </div>
+          </div>
+        </div>
+
+        <!-- Score breakdown -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
+            <h5 class="fw-bold"><i class="bi bi-bar-chart text-primary me-2"></i>Score Breakdown</h5>
+          </div>
+          <div class="card-body px-4 pb-4">
+            {% set scores = [
+              ('AI Confidence', report.ai_confidence, 'primary'),
+              ('OCR Confidence', report.ocr_confidence, 'info'),
+              ('Packaging Score', report.packaging_score, 'warning'),
+              ('Authenticity', report.authenticity_score, pred_class),
+            ] %}
+            {% for label, val, colour in scores %}
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1">
+                <span class="text-muted">{{ label }}</span>
+                <span class="fw-semibold text-{{ colour }}">{{ "%.1f"|format(val) }}%</span>
+              </div>
+              <div class="progress rounded-pill" style="height:8px">
+                <div class="progress-bar bg-{{ colour }} rounded-pill"
+                     style="width:{{ val }}%"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Raw OCR text (collapsible) -->
+        {% if report.raw_text %}
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-transparent border-0 p-0">
+            <button class="btn btn-link text-decoration-none w-100 text-start px-4 py-3"
+                    data-bs-toggle="collapse" data-bs-target="#rawOCR">
+              <i class="bi bi-file-text text-primary me-2"></i>
+              <span class="fw-semibold">Raw OCR Text</span>
+              <i class="bi bi-chevron-down float-end mt-1"></i>
+            </button>
+          </div>
+          <div id="rawOCR" class="collapse">
+            <div class="card-body px-4 pb-4">
+              <pre class="bg-light rounded-3 p-3 small" style="max-height:180px;overflow:auto">{{ report.raw_text }}</pre>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Timestamp -->
+        {% if report.timestamp %}
+        <p class="text-muted small text-center">
+          <i class="bi bi-clock me-1"></i>Analyzed: {{ report.timestamp }}
+        </p>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

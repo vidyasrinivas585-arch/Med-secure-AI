@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}MedSecure AI — Analyze Medicine{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-7">
+
+        <!-- Header -->
+        <div class="text-center mb-4">
+          <span class="badge bg-primary-soft text-primary px-3 py-2 mb-2">
+            <i class="bi bi-cloud-upload me-1"></i>Step 1 of 1
+          </span>
+          <h2 class="fw-bold">Upload Medicine Package</h2>
+          <p class="text-muted">Take a clear photo of the medicine package label and upload it below.</p>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+          <form id="uploadForm" action="{{ url_for('analyze') }}" method="POST" enctype="multipart/form-data">
+
+            <!-- Language selection -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="bi bi-translate me-1 text-primary"></i>Select Language
+              </label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="language" id="lang-en" value="en" checked>
+                  <label class="form-check-label" for="lang-en">English</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="language" id="lang-kn" value="kn">
+                  <label class="form-check-label" for="lang-kn">ಕನ್ನಡ (Kannada)</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Drop zone -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="bi bi-image me-1 text-primary"></i>Medicine Package Image
+              </label>
+              <div id="dropZone" class="drop-zone rounded-4 border-2 border-dashed p-5 text-center"
+                   onclick="document.getElementById('imageInput').click()">
+                <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-75 mb-3 d-block"></i>
+                <p class="mb-1 fw-semibold">Click to upload or drag & drop</p>
+                <p class="text-muted small mb-0">PNG, JPG, WebP — Max 10 MB</p>
+              </div>
+              <input type="file" id="imageInput" name="image" accept=".jpg,.jpeg,.png,.webp,.bmp"
+                     class="d-none" required>
+            </div>
+
+            <!-- Image preview -->
+            <div id="previewSection" class="mb-4 d-none">
+              <label class="form-label fw-semibold text-success">
+                <i class="bi bi-check-circle me-1"></i>Selected Image
+              </label>
+              <div class="text-center">
+                <img id="previewImg" src="#" alt="Preview"
+                     class="img-fluid rounded-3 shadow-sm" style="max-height:280px">
+                <div id="previewName" class="text-muted small mt-2"></div>
+              </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="alert alert-info border-0 rounded-3 mb-4 small">
+              <i class="bi bi-lightbulb me-2"></i>
+              <strong>Tips for best results:</strong>
+              Ensure the label is fully visible, well-lit, and in focus.
+              Include the expiry date, batch number, and manufacturer name in frame.
+            </div>
+
+            <!-- Submit -->
+            <div class="d-grid">
+              <button type="submit" id="analyzeBtn" class="btn btn-primary btn-lg rounded-3" disabled>
+                <i class="bi bi-shield-check me-2"></i>Analyze Medicine
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Processing overlay -->
+<div id="processingOverlay" class="processing-overlay d-none">
+  <div class="text-center text-white">
+    <div class="spinner-border mb-3" style="width:3rem;height:3rem"></div>
+    <h4 class="fw-bold mb-2">Analyzing Medicine...</h4>
+    <p id="processingStep" class="text-white-50">Running AI model...</p>
+    <div class="progress mt-3" style="width:300px">
+      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+           style="width:10%"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dropZone   = document.getElementById('dropZone');
+const imageInput = document.getElementById('imageInput');
+const previewSection = document.getElementById('previewSection');
+const previewImg = document.getElementById('previewImg');
+const previewName = document.getElementById('previewName');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const overlay    = document.getElementById('processingOverlay');
+const progBar    = document.getElementById('progressBar');
+const progStep   = document.getElementById('processingStep');
+
+// Drag-and-drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+});
+
+imageInput.addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+
+function setFile(file) {
+  // Update the input so FormData picks it up
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  imageInput.files = dt.files;
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = e => { previewImg.src = e.target.result; };
+  reader.readAsDataURL(file);
+  previewName.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+  previewSection.classList.remove('d-none');
+  analyzeBtn.disabled = false;
+  dropZone.style.borderColor = 'var(--bs-primary)';
+}
+
+// Progress simulation during analysis
+document.getElementById('uploadForm').addEventListener('submit', () => {
+  overlay.classList.remove('d-none');
+  const steps = [
+    [20, 'Preprocessing image with OpenCV...'],
+    [40, 'Running EasyOCR extraction...'],
+    [60, 'Analyzing packaging quality...'],
+    [80, 'Running MobileNetV2 inference...'],
+    [95, 'Computing authenticity score...'],
+  ];
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i < steps.length) {
+      progBar.style.width = steps[i][0] + '%';
+      progStep.textContent = steps[i][1];
+      i++;
+    } else {
+      clearInterval(interval);
+    }
+  }, 1200);
+});
+</script>
+{% endblock %}
