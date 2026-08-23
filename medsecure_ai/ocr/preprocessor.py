@@ -16,45 +16,63 @@ TARGET_SIZE = (224, 224)
 
 def preprocess_for_model(image_path: str) -> np.ndarray | None:
     """
-    Full preprocessing pipeline for the deep learning model.
+    Preprocess image exactly the same way as MobileNetV2
+    training preprocessing.
 
-    Steps:
-        1. Load image
-        2. Resize to 224×224
-        3. Noise removal (Gaussian blur)
-        4. Normalize pixel values to [0, 1]
+    IMPORTANT:
+    train.py uses:
+        tensorflow.keras.applications.mobilenet_v2.preprocess_input
 
-    Args:
-        image_path (str): Path to the input image file.
-
-    Returns:
-        np.ndarray: Preprocessed image array of shape (1, 224, 224, 3), or None.
+    Therefore inference must use the same preprocessing.
     """
+
     try:
         img = cv2.imread(image_path)
+
         if img is None:
-            logger.error(f"Failed to load image: {image_path}")
+            logger.error(
+                f"Failed to load image: {image_path}"
+            )
             return None
 
-        # Convert BGR → RGB (OpenCV loads as BGR; TF expects RGB)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # OpenCV BGR -> RGB
+        img = cv2.cvtColor(
+            img,
+            cv2.COLOR_BGR2RGB
+        )
 
-        # Resize to MobileNetV2 input size
-        img = cv2.resize(img, TARGET_SIZE, interpolation=cv2.INTER_AREA)
+        # Resize exactly as training
+        img = cv2.resize(
+            img,
+            TARGET_SIZE,
+            interpolation=cv2.INTER_AREA
+        )
 
-        # Mild Gaussian blur to reduce sensor noise
-        img = cv2.GaussianBlur(img, (3, 3), 0)
+        # Convert to float32
+        img = img.astype(np.float32)
 
-        # Normalize to [0, 1]
-        img = img.astype(np.float32) / 255.0
+        # IMPORTANT:
+        # MobileNetV2 preprocess_input converts:
+        # [0, 255] -> [-1, 1]
+        from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
-        # Add batch dimension → (1, 224, 224, 3)
-        return np.expand_dims(img, axis=0)
+        img = preprocess_input(img)
+
+        # Add batch dimension
+        img = np.expand_dims(
+            img,
+            axis=0
+        )
+
+        return img
 
     except Exception as e:
-        logger.error(f"Preprocessing for model failed: {e}")
-        return None
 
+        logger.error(
+            f"Preprocessing for model failed: {e}"
+        )
+
+        return None
 
 def preprocess_for_ocr(image_path: str) -> np.ndarray | None:
     """

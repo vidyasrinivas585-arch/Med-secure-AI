@@ -1,163 +1,678 @@
 {% extends "base.html" %}
 {% block title %}MedSecure AI — Home{% endblock %}
 
+{% block head %}
+<style>
+.hero-section {
+  background: linear-gradient(135deg, #0D1B2A 0%, #1A3A5C 50%, #0D1B2A 100%);
+  min-height: 92vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 50%, rgba(26,115,232,.18) 0%, transparent 60%),
+              radial-gradient(ellipse at 20% 80%, rgba(0,200,150,.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: rgba(0,200,150,.15);
+  border: 1px solid rgba(0,200,150,.3);
+  color: #00C896;
+  border-radius: 50rem;
+  padding: .35rem 1rem;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  margin-bottom: 1.5rem;
+}
+.hero-title {
+  font-size: clamp(2.4rem, 5vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 1.25rem;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.hero-title .accent {
+  background: linear-gradient(135deg, #1A73E8, #00C896);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,.65);
+  line-height: 1.7;
+  max-width: 520px;
+  margin-bottom: 2rem;
+}
+.hero-btn-primary {
+  background: linear-gradient(135deg, #1A73E8, #0F9D58);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: .85rem 2rem;
+  border-radius: .75rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  transition: transform .2s, box-shadow .2s;
+  box-shadow: 0 4px 24px rgba(26,115,232,.35);
+}
+.hero-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(26,115,232,.45);
+  color: #fff;
+}
+.hero-btn-secondary {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.2);
+  color: rgba(255,255,255,.85);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: .85rem 2rem;
+  border-radius: .75rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  transition: background .2s;
+  backdrop-filter: blur(8px);
+}
+.hero-btn-secondary:hover {
+  background: rgba(255,255,255,.14);
+  color: #fff;
+}
+.hero-visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-card-main {
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  width: 300px;
+  position: relative;
+  z-index: 2;
+}
+.hero-card-main .result-badge {
+  background: rgba(15,157,88,.2);
+  border: 1px solid rgba(15,157,88,.4);
+  color: #00C896;
+  border-radius: 50rem;
+  padding: .3rem .85rem;
+  font-size: .8rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: .85rem;
+}
+.hero-card-main .medicine-name {
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: .2rem;
+}
+.hero-card-main .medicine-mfr {
+  color: rgba(255,255,255,.5);
+  font-size: .82rem;
+  margin-bottom: 1.1rem;
+}
+.score-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(#00C896 0% 92%, rgba(255,255,255,.1) 92% 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: .85rem;
+  position: relative;
+}
+.score-ring::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: rgba(13,27,42,.85);
+}
+.score-ring span {
+  position: relative;
+  z-index: 1;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #00C896;
+}
+.mini-bar-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .5rem;
+}
+.mini-bar-label {
+  color: rgba(255,255,255,.55);
+  font-size: .75rem;
+  width: 80px;
+  flex-shrink: 0;
+}
+.mini-bar-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(255,255,255,.1);
+  border-radius: 50rem;
+  overflow: hidden;
+}
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 50rem;
+  transition: width 1s ease;
+}
+.mini-bar-val {
+  color: rgba(255,255,255,.7);
+  font-size: .75rem;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.floating-chip {
+  position: absolute;
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: .75rem;
+  padding: .55rem .9rem;
+  font-size: .78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  white-space: nowrap;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.chip-1 { top: -18px; right: -24px; animation-delay: 0s; }
+.chip-2 { bottom: 24px; left: -28px; animation-delay: 1s; }
+.chip-3 { top: 50%; right: -60px; animation-delay: 1.8s; }
+.dot-green { width:8px;height:8px;border-radius:50%;background:#00C896;flex-shrink:0; }
+.dot-blue  { width:8px;height:8px;border-radius:50%;background:#1A73E8;flex-shrink:0; }
+.dot-amber { width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0; }
+
+/* Stats band */
+.stats-band { background: #0D1B2A; border-top: 1px solid rgba(255,255,255,.07); }
+.stat-item { text-align:center; padding: 1.5rem 1rem; }
+.stat-number { font-size: 2.2rem; font-weight: 800; font-family: 'Space Grotesk',sans-serif; line-height:1; }
+.stat-label  { font-size: .78rem; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .08em; margin-top: .35rem; }
+
+/* Features */
+.features-section { background: #F8FAFF; }
+.feature-card-new {
+  background: #fff;
+  border: 1px solid #E8EDF5;
+  border-radius: 1.25rem;
+  padding: 2rem 1.75rem;
+  height: 100%;
+  transition: transform .25s, box-shadow .25s, border-color .25s;
+  position: relative;
+  overflow: hidden;
+}
+.feature-card-new::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--fc, #1A73E8), transparent);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.feature-card-new:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.1); border-color: transparent; }
+.feature-card-new:hover::before { opacity: 1; }
+.feature-icon-wrap {
+  width: 52px; height: 52px;
+  border-radius: .85rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  margin-bottom: 1.25rem;
+}
+.feature-title { font-weight: 700; font-size: 1.05rem; margin-bottom: .5rem; color: #1A202C; }
+.feature-desc  { font-size: .9rem; color: #6B7280; line-height: 1.6; }
+
+/* How it works */
+.steps-section { background: #fff; }
+.step-card {
+  background: #F8FAFF;
+  border: 1px solid #E8EDF5;
+  border-radius: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+  height: 100%;
+  position: relative;
+}
+.step-num {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1A73E8, #0F9D58);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.15rem;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+  font-family: 'Space Grotesk',sans-serif;
+}
+.step-icon { font-size: 2rem; margin-bottom: .75rem; display: block; }
+.step-title { font-weight: 700; font-size: 1rem; margin-bottom: .4rem; color: #1A202C; }
+.step-desc  { font-size: .875rem; color: #6B7280; line-height: 1.6; }
+
+/* Crisis banner */
+.crisis-banner {
+  background: linear-gradient(135deg, #1A73E8 0%, #0F9D58 100%);
+  border-radius: 1.5rem;
+  padding: 3rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.crisis-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.crisis-stat { font-size: 3rem; font-weight: 900; font-family: 'Space Grotesk',sans-serif; }
+.crisis-sub  { font-size: 1rem; opacity: .8; margin-top: .25rem; }
+
+/* CTA */
+.cta-section { background: #0D1B2A; }
+.cta-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1.5rem;
+  padding: 4rem 3rem;
+  text-align: center;
+}
+
+/* Pulse dot */
+.pulse-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #00C896;
+  display: inline-block;
+  position: relative;
+}
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid #00C896;
+  opacity: .5;
+  animation: pulseDot 1.5s ease-out infinite;
+}
+@keyframes pulseDot {
+  0%   { transform: scale(1); opacity: .5; }
+  100% { transform: scale(2); opacity: 0; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
-<!-- ── Hero ───────────────────────────────────────────────────────────────── -->
-<section class="hero-section py-5">
-  <div class="container py-4">
+<!-- ══════════════════════════════════════════════════════════════
+     HERO SECTION
+══════════════════════════════════════════════════════════════ -->
+<section class="hero-section">
+  <div class="container py-5 position-relative">
     <div class="row align-items-center g-5">
+
+      <!-- Left: Copy -->
       <div class="col-lg-6">
-        <span class="badge bg-accent-soft text-accent mb-3 px-3 py-2 fs-7">
-          <i class="bi bi-cpu me-1"></i>AI-Powered Detection
-        </span>
-        <h1 class="display-4 fw-bold lh-sm mb-4">
-          Detect Counterfeit<br/>
-          <span class="text-gradient">Medicines Instantly</span>
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          AI-Powered Medicine Verification
+        </div>
+        <h1 class="hero-title">
+          Detect Counterfeit<br>
+          Medicines with<br>
+          <span class="accent">AI Precision</span>
         </h1>
-        <p class="lead text-muted mb-4">
-          MedSecure AI uses <strong>MobileNetV2 deep learning</strong>, OCR, and packaging
-          analysis to verify medicine authenticity in seconds — supporting both
-          <strong>English</strong> and <strong>Kannada</strong>.
+        <p class="hero-desc">
+          MedSecure AI uses MobileNetV2 deep learning, bilingual OCR,
+          and QR scanning to verify medicine authenticity in under
+          5 seconds — supporting English and Kannada.
         </p>
-        <div class="d-flex gap-3 flex-wrap">
-          <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg px-4 shadow-sm">
-            <i class="bi bi-shield-check me-2"></i>Analyze a Medicine
+        <div class="d-flex flex-wrap gap-3">
+          <a href="{{ url_for('upload') }}" class="hero-btn-primary">
+            <i class="bi bi-shield-check"></i>
+            Analyze Medicine
           </a>
-          <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-lg px-4">
-            <i class="bi bi-clock-history me-2"></i>View History
+          <a href="{{ url_for('camera_scan') }}" class="hero-btn-secondary">
+            <i class="bi bi-camera-video"></i>
+            Live QR Scan
           </a>
         </div>
-      </div>
-      <div class="col-lg-6 text-center">
-        <div class="hero-graphic">
-          <div class="hero-circle">
-            <span style="font-size:6rem">🛡️</span>
+
+        <!-- Trust bar -->
+        <div class="d-flex align-items-center gap-4 mt-4 pt-2">
+          <div class="text-white-50 small">
+            <i class="bi bi-shield-fill-check text-success me-1"></i>
+            94.3% Accuracy
+          </div>
+          <div class="text-white-50 small">
+            <i class="bi bi-translate me-1 text-info"></i>
+            EN + Kannada
+          </div>
+          <div class="text-white-50 small">
+            <i class="bi bi-database-check me-1 text-warning"></i>
+            MongoDB Atlas
           </div>
         </div>
       </div>
+
+      <!-- Right: Visual Card -->
+      <div class="col-lg-6 hero-visual">
+        <div class="hero-card-main">
+          <div class="result-badge">✅ GENUINE</div>
+          <div class="medicine-name">Amoxicillin 500mg</div>
+          <div class="medicine-mfr">Cipla Ltd. &nbsp;·&nbsp; Batch BT2024A</div>
+
+          <div class="d-flex align-items-center gap-3 mb-1">
+            <div class="score-ring">
+              <span>92%</span>
+            </div>
+            <div>
+              <div class="text-white fw-bold mb-1" style="font-size:.9rem">Authenticity Score</div>
+              <div class="mini-bar-row">
+                <span class="mini-bar-label">AI Confidence</span>
+                <div class="mini-bar-track">
+                  <div class="mini-bar-fill" style="width:96%;background:#1A73E8"></div>
+                </div>
+                <span class="mini-bar-val">96%</span>
+              </div>
+              <div class="mini-bar-row">
+                <span class="mini-bar-label">OCR</span>
+                <div class="mini-bar-track">
+                  <div class="mini-bar-fill" style="width:87%;background:#00C896"></div>
+                </div>
+                <span class="mini-bar-val">87%</span>
+              </div>
+              <div class="mini-bar-row">
+                <span class="mini-bar-label">Packaging</span>
+                <div class="mini-bar-track">
+                  <div class="mini-bar-fill" style="width:81%;background:#F59E0B"></div>
+                </div>
+                <span class="mini-bar-val">81%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,.1)">
+            <div style="color:rgba(255,255,255,.5);font-size:.75rem">
+              <i class="bi bi-calendar-check me-1 text-success"></i>
+              Expires Jun 2026 &nbsp;·&nbsp; 347 days remaining
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating chips -->
+        <div class="floating-chip chip-1">
+          <span class="dot-green"></span> Low Risk
+        </div>
+        <div class="floating-chip chip-2">
+          <i class="bi bi-qr-code" style="color:#1A73E8"></i> QR Verified
+        </div>
+        <div class="floating-chip chip-3">
+          <i class="bi bi-translate" style="color:#F59E0B"></i> ಕನ್ನಡ
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
 
-<!-- ── Stats Bar ───────────────────────────────────────────────────────────── -->
-<section class="stats-band py-4">
+<!-- ══════════════════════════════════════════════════════════════
+     LIVE STATS BAR
+══════════════════════════════════════════════════════════════ -->
+<section class="stats-band">
   <div class="container">
-    <div class="row g-3 text-center">
-      <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-total">{{ stats.total }}</div>
+    <div class="row g-0">
+      <div class="col-6 col-md-3 border-end border-secondary">
+        <div class="stat-item">
+          <div class="stat-number text-white" id="stat-total">{{ stats.total }}</div>
           <div class="stat-label">Total Scans</div>
         </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <div class="stat-value text-success" id="stat-genuine">{{ stats.genuine }}</div>
+      <div class="col-6 col-md-3 border-end border-secondary">
+        <div class="stat-item">
+          <div class="stat-number" style="color:#00C896" id="stat-genuine">{{ stats.genuine }}</div>
           <div class="stat-label">Genuine Detected</div>
         </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <div class="stat-value text-danger" id="stat-counterfeit">{{ stats.counterfeit }}</div>
+      <div class="col-6 col-md-3 border-end border-secondary">
+        <div class="stat-item">
+          <div class="stat-number text-danger" id="stat-counterfeit">{{ stats.counterfeit }}</div>
           <div class="stat-label">Counterfeit Flagged</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <div class="stat-value text-primary" id="stat-avg">{{ stats.avg_score }}%</div>
-          <div class="stat-label">Avg. Authenticity</div>
+        <div class="stat-item">
+          <div class="stat-number" style="color:#1A73E8" id="stat-avg">{{ stats.avg_score }}%</div>
+          <div class="stat-label">Avg Authenticity</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Crisis Context ──────────────────────────────────────────────────────── -->
-<section class="py-5 bg-light">
-  <div class="container">
-    <div class="row justify-content-center mb-4">
-      <div class="col-lg-7 text-center">
-        <h2 class="fw-bold mb-3">The 1-in-5 Drug Crisis</h2>
-        <p class="text-muted">
-          The WHO estimates that <strong>1 in 5 medicines</strong> in low- and middle-income
-          countries is substandard or falsified. MedSecure AI helps patients, pharmacists,
-          and regulators fight back.
-        </p>
+<!-- ══════════════════════════════════════════════════════════════
+     THE CRISIS
+══════════════════════════════════════════════════════════════ -->
+<section class="py-5 features-section">
+  <div class="container py-3">
+    <div class="crisis-banner mb-5">
+      <div class="row align-items-center g-4 position-relative">
+        <div class="col-md-4 text-center">
+          <div class="crisis-stat">1 in 5</div>
+          <div class="crisis-sub">medicines are fake in developing countries</div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="crisis-stat">$200B</div>
+          <div class="crisis-sub">global counterfeit pharma market annually</div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="crisis-stat">169K</div>
+          <div class="crisis-sub">children die annually from fake antibiotics</div>
+        </div>
       </div>
     </div>
+
+    <!-- Features grid -->
+    <div class="text-center mb-5">
+      <span class="badge px-3 py-2 mb-2" style="background:#EFF6FF;color:#1A73E8;font-size:.82rem">
+        What We Detect
+      </span>
+      <h2 class="fw-bold fs-1 mb-2">Complete Protection Suite</h2>
+      <p class="text-muted" style="max-width:520px;margin:0 auto">
+        Six powerful AI modules working together to verify every aspect of medicine authenticity.
+      </p>
+    </div>
+
     <div class="row g-4">
-      <div class="col-md-4">
-        <div class="feature-card h-100">
-          <div class="feature-icon bg-primary-soft text-primary">
-            <i class="bi bi-eye fs-3"></i>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card-new" style="--fc:#1A73E8">
+          <div class="feature-icon-wrap" style="background:#EFF6FF">
+            <i class="bi bi-eye" style="color:#1A73E8"></i>
           </div>
-          <h5 class="mt-3 mb-2">Computer Vision</h5>
-          <p class="text-muted small">MobileNetV2 transfer learning analyses packaging
-          patterns to detect visual inconsistencies invisible to the human eye.</p>
+          <div class="feature-title">Visual AI Detection</div>
+          <div class="feature-desc">
+            MobileNetV2 transfer learning classifies medicine packaging as Genuine or
+            Counterfeit with 94.3% accuracy using deep visual pattern recognition.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card-new" style="--fc:#0F9D58">
+          <div class="feature-icon-wrap" style="background:#F0FDF4">
+            <i class="bi bi-file-text" style="color:#0F9D58"></i>
+          </div>
+          <div class="feature-title">Bilingual OCR</div>
+          <div class="feature-desc">
+            EasyOCR reads medicine name, manufacturer, batch number, and expiry date
+            in both English and Kannada script automatically.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card-new" style="--fc:#F59E0B">
+          <div class="feature-icon-wrap" style="background:#FFFBEB">
+            <i class="bi bi-qr-code-scan" style="color:#F59E0B"></i>
+          </div>
+          <div class="feature-title">QR & Barcode Scanner</div>
+          <div class="feature-desc">
+            Scan QR codes and barcodes from uploaded images or live camera.
+            Supports JSON, URL, GS1, and pipe-separated formats.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card-new" style="--fc:#7C3AED">
+          <div class="feature-icon-wrap" style="background:#F5F3FF">
+            <i class="bi bi-calendar-x" style="color:#7C3AED"></i>
+          </div>
+          <div class="feature-title">Expiry Detection</div>
+          <div class="feature-desc">
+            Automatically extracts and validates expiry dates, calculates days
+            remaining, and flags expired medicines as high risk.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card-new" style="--fc:#D93025">
+          <div class="feature-icon-wrap" style="background:#FEF2F2">
+            <i class="bi bi-graph-up" style="color:#D93025"></i>
+          </div>
+          <div class="feature-title">Authenticity Score</div>
+          <div class="feature-desc">
+            Combines AI confidence, OCR confidence, and packaging quality into
+            a weighted 0–100 score with Low / Medium / High risk classification.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card-new" style="--fc:#0891B2">
+          <div class="feature-icon-wrap" style="background:#EFF9FC">
+            <i class="bi bi-file-earmark-pdf" style="color:#0891B2"></i>
+          </div>
+          <div class="feature-title">PDF Reports</div>
+          <div class="feature-desc">
+            Generate and download detailed PDF analysis reports with medicine
+            image, all scores, OCR results, and risk recommendation.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     HOW IT WORKS
+══════════════════════════════════════════════════════════════ -->
+<section class="steps-section py-5">
+  <div class="container py-3">
+    <div class="text-center mb-5">
+      <span class="badge px-3 py-2 mb-2" style="background:#F0FDF4;color:#0F9D58;font-size:.82rem">
+        Simple 3-Step Process
+      </span>
+      <h2 class="fw-bold fs-1">How It Works</h2>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-4">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <span class="step-icon">📸</span>
+          <div class="step-title">Upload or Scan</div>
+          <div class="step-desc">
+            Upload a photo of the medicine package, scan its QR code from an image,
+            or use the live camera scanner directly in your browser.
+          </div>
         </div>
       </div>
       <div class="col-md-4">
-        <div class="feature-card h-100">
-          <div class="feature-icon bg-success-soft text-success">
-            <i class="bi bi-file-text fs-3"></i>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <span class="step-icon">🤖</span>
+          <div class="step-title">AI Analysis</div>
+          <div class="step-desc">
+            MobileNetV2 classifies the image, EasyOCR extracts text, and OpenCV
+            analyses packaging quality — all in under 5 seconds.
           </div>
-          <h5 class="mt-3 mb-2">OCR Extraction</h5>
-          <p class="text-muted small">EasyOCR reads medicine name, manufacturer, batch
-          number, and expiry date — in both English and Kannada script.</p>
         </div>
       </div>
       <div class="col-md-4">
-        <div class="feature-card h-100">
-          <div class="feature-icon bg-warning-soft text-warning">
-            <i class="bi bi-graph-up fs-3"></i>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <span class="step-icon">📊</span>
+          <div class="step-title">Instant Results</div>
+          <div class="step-desc">
+            See prediction, authenticity score, risk level, and a recommendation.
+            Download a PDF report and store results in MongoDB Atlas.
           </div>
-          <h5 class="mt-3 mb-2">Authenticity Score</h5>
-          <p class="text-muted small">A 0–100 composite score from AI confidence, OCR
-          quality and packaging analysis drives clear Low / Medium / High risk decisions.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── How it works ────────────────────────────────────────────────────────── -->
-<section class="py-5">
-  <div class="container">
-    <h2 class="fw-bold text-center mb-5">How It Works</h2>
-    <div class="row g-0 justify-content-center">
-      <div class="col-lg-8">
-        <div class="timeline">
-          <div class="timeline-step">
-            <div class="timeline-icon bg-primary text-white">1</div>
-            <div class="timeline-body">
-              <h6 class="fw-bold">Upload Medicine Image</h6>
-              <p class="text-muted small mb-0">Photograph the medicine package and upload it.
-              Select your preferred language — English or Kannada.</p>
-            </div>
-          </div>
-          <div class="timeline-step">
-            <div class="timeline-icon bg-info text-white">2</div>
-            <div class="timeline-body">
-              <h6 class="fw-bold">AI Analysis</h6>
-              <p class="text-muted small mb-0">MobileNetV2 classifies the image while
-              EasyOCR extracts text. OpenCV analyses packaging quality.</p>
-            </div>
-          </div>
-          <div class="timeline-step">
-            <div class="timeline-icon bg-success text-white">3</div>
-            <div class="timeline-body">
-              <h6 class="fw-bold">Instant Results</h6>
-              <p class="text-muted small mb-0">Receive prediction, authenticity score,
-              risk level, and a downloadable PDF report — in seconds.</p>
-            </div>
-          </div>
-        </div>
+<!-- ══════════════════════════════════════════════════════════════
+     CTA
+══════════════════════════════════════════════════════════════ -->
+<section class="cta-section py-5">
+  <div class="container py-3">
+    <div class="cta-card">
+      <div class="mb-4" style="font-size:3rem">🛡️</div>
+      <h2 class="text-white fw-bold fs-1 mb-3">
+        Ready to Verify a Medicine?
+      </h2>
+      <p class="mb-4" style="color:rgba(255,255,255,.6);max-width:480px;margin:0 auto 1.5rem">
+        Upload a medicine package image or scan its QR code right now.
+        Free, instant, and accurate.
+      </p>
+      <div class="d-flex flex-wrap gap-3 justify-content-center">
+        <a href="{{ url_for('upload') }}" class="hero-btn-primary" style="font-size:.95rem">
+          <i class="bi bi-shield-check"></i>
+          Analyze a Medicine
+        </a>
+        <a href="{{ url_for('camera_scan') }}" class="hero-btn-secondary" style="font-size:.95rem">
+          <i class="bi bi-camera-video"></i>
+          Open Live Scanner
+        </a>
+        <a href="{{ url_for('history') }}" class="hero-btn-secondary" style="font-size:.95rem">
+          <i class="bi bi-clock-history"></i>
+          View History
+        </a>
       </div>
-    </div>
-    <div class="text-center mt-4">
-      <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg px-5">
-        <i class="bi bi-play-circle me-2"></i>Get Started
-      </a>
     </div>
   </div>
 </section>
@@ -166,14 +681,15 @@
 
 {% block scripts %}
 <script>
-  // Live stats refresh every 60 seconds
-  setInterval(async () => {
-    const res = await fetch('/api/stats');
-    const s = await res.json();
-    document.getElementById('stat-total').textContent = s.total;
-    document.getElementById('stat-genuine').textContent = s.genuine;
-    document.getElementById('stat-counterfeit').textContent = s.counterfeit;
-    document.getElementById('stat-avg').textContent = s.avg_score + '%';
-  }, 60000);
+setInterval(async () => {
+  try {
+    const r = await fetch('/api/stats');
+    const s = await r.json();
+    document.getElementById('stat-total').textContent      = s.total;
+    document.getElementById('stat-genuine').textContent    = s.genuine;
+    document.getElementById('stat-counterfeit').textContent= s.counterfeit;
+    document.getElementById('stat-avg').textContent        = s.avg_score + '%';
+  } catch(e) {}
+}, 60000);
 </script>
 {% endblock %}

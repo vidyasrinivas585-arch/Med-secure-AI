@@ -8,6 +8,7 @@ __pycache__/
 
 # Model weights (large files)
 trained_model/*.h5
+trained_model/*.keras
 trained_model/evaluation/
 
 # Uploads and generated reports
@@ -19,8 +20,15 @@ static/reports/*
 # Dataset (too large for git)
 dataset/genuine/*
 dataset/counterfeit/*
+dataset/train/*
+dataset/test/*
+dataset/val/*
+
 !dataset/genuine/.gitkeep
 !dataset/counterfeit/.gitkeep
+!dataset/train/.gitkeep
+!dataset/test/.gitkeep
+!dataset/val/.gitkeep
 
 # IDE
 .vscode/

@@ -1,214 +1,1166 @@
 """
 ocr/extractor.py
-OCR-based information extraction from medicine package images.
-Uses EasyOCR when available, falls back to OpenCV text detection.
+MedSecure AI - Improved OCR Engine
+
+Features:
+- Blurry medicine image enhancement
+- Upscaling
+- CLAHE contrast enhancement
+- Denoising
+- Sharpening / deblurring
+- Multiple thresholding methods
+- Multiple Tesseract PSM modes
+- Medicine name extraction
+- Manufacturer extraction
+- Batch number extraction
+- Manufacturing / expiry date extraction
+- Better handling of formats like:
+    05/05/2026
+    05-05-2026
+    05.05.2026
+    05/2026
+    MAY 2026
+    5.5.3.20260724
 """
 
+import os
 import re
+import cv2
 import logging
+import subprocess
 import numpy as np
+
 from datetime import datetime
-from typing import Any
+from PIL import Image, ImageEnhance, ImageFilter
 
 logger = logging.getLogger(__name__)
 
-_reader = None
 
+# ============================================================
+# TESSERACT
+# ============================================================
 
-def _get_reader():
-    """Return EasyOCR reader if available, else None."""
-    global _reader
-    if _reader is None:
-        try:
-            import easyocr
-            _reader = easyocr.Reader(["en", "kn"], gpu=False, verbose=False)
-            logger.info("EasyOCR reader initialised.")
-        except Exception as e:
-            logger.warning(f"EasyOCR not available: {e}. Using OpenCV fallback.")
-            _reader = "unavailable"
-    return None if _reader == "unavailable" else _reader
-
-
-def _ocr_with_opencv(image_path: str) -> tuple[str, float]:
-    """
-    OpenCV-based text extraction fallback when EasyOCR is not installed.
-    Uses edge density and contour analysis to estimate OCR confidence.
-    Returns extracted text (empty) and a confidence score based on
-    how much text-like content is detected in the image.
-    """
-    try:
-        import cv2
-
-        img = cv2.imread(image_path)
-        if img is None:
-            return "", 0.0
-
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        h, w = gray.shape
-
-        # ── Method 1: Edge density (text has many edges) ──────────────────
-        edges = cv2.Canny(gray, 50, 150)
-        edge_density = float(np.sum(edges > 0)) / (h * w)
-
-        # ── Method 2: Count small contours (text characters) ─────────────
-        _, thresh = cv2.threshold(gray, 0, 255,
-                                  cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
-        # Text-like contours: small area, reasonable aspect ratio
-        text_contours = 0
-        for c in contours:
-            x, y, cw, ch = cv2.boundingRect(c)
-            area = cw * ch
-            aspect = cw / ch if ch > 0 else 0
-            if 10 < area < 2000 and 0.1 < aspect < 15:
-                text_contours += 1
-
-        # ── Method 3: Variance (text areas have high local variance) ─────
-        variance = float(cv2.Laplacian(gray, cv2.CV_64F).var())
-
-        # ── Compute confidence score ──────────────────────────────────────
-        # Scale each metric to 0-100 contribution
-        edge_score     = min(edge_density * 500, 40.0)       # max 40 pts
-        contour_score  = min(text_contours * 0.5, 40.0)      # max 40 pts
-        variance_score = min(variance / 50.0, 20.0)          # max 20 pts
-
-        confidence = edge_score + contour_score + variance_score
-        confidence = round(min(max(confidence, 0.0), 92.0), 2)
-
-        logger.info(f"OpenCV OCR fallback — edges:{edge_density:.3f} "
-                    f"contours:{text_contours} var:{variance:.1f} "
-                    f"→ confidence:{confidence}%")
-
-        return "", confidence
-
-    except Exception as e:
-        logger.error(f"OpenCV OCR fallback failed: {e}")
-        return "", 45.0   # safe default so bar is visible
-
-
-def extract_text_with_confidence(image_path: str) -> tuple[str, float]:
-    """
-    Extract text and confidence. Uses EasyOCR if available,
-    otherwise uses OpenCV analysis to estimate a meaningful confidence.
-    Returns (text, confidence_0_to_100).
-    """
-    reader = _get_reader()
-
-    # ── EasyOCR path ──────────────────────────────────────────────────────
-    if reader is not None:
-        try:
-            results = reader.readtext(image_path, detail=1, paragraph=False)
-            if results:
-                texts = [r[1] for r in results]
-                confs  = [r[2] for r in results]
-                full_text = " ".join(texts)
-                mean_conf = (sum(confs) / len(confs)) * 100
-                return full_text, round(mean_conf, 2)
-        except Exception as e:
-            logger.error(f"EasyOCR readtext failed: {e}")
-
-    # ── OpenCV fallback path ──────────────────────────────────────────────
-    return _ocr_with_opencv(image_path)
-
-
-# ── Date / field regex patterns ───────────────────────────────────────────────
-
-_DATE_PATTERNS = [
-    r"\b(\d{2}[/-]\d{2}[/-]\d{4})\b",
-    r"\b(\d{2}[/-]\d{4})\b",
-    r"\b([A-Za-z]{3}\.?\s?\d{4})\b",
-    r"\b(\d{4}-\d{2}-\d{2})\b",
+TESSERACT_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    "tesseract",
 ]
 
-_BATCH_PATTERNS = [
-    r"(?:batch|lot|b\.no|b/n|lot no\.?|batch no\.?)[:\s#]*([A-Z0-9\-]+)",
-    r"\b(B[A-Z0-9]{4,10})\b",
-]
 
-_MFR_PATTERNS = [
-    r"(?:mfg\s*by|manufactured by|mfr\.?)[:\s]*([A-Za-z &\.]+(?:Ltd|Pvt|Inc|Pharma|Labs?|Corp)?)",
-    r"(?:marketed by)[:\s]*([A-Za-z &\.]+(?:Ltd|Pvt|Inc|Pharma|Labs?|Corp)?)",
-]
+def _find_tesseract():
 
-_MED_NAME_PATTERN = (
-    r"\b([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3}"
-    r"(?:\s\d+\s?mg|\s\d+\s?ml)?)\b"
-)
+    for path in TESSERACT_PATHS:
 
-
-def _first_match(text: str, patterns: list, flags=re.IGNORECASE) -> str:
-    for pat in patterns:
-        m = re.search(pat, text, flags)
-        if m:
-            return m.group(1).strip()
-    return "Not Detected"
-
-
-def _parse_date(date_str: str):
-    formats = ["%d/%m/%Y", "%m/%Y", "%d-%m-%Y",
-               "%Y-%m-%d", "%b %Y", "%b. %Y"]
-    for fmt in formats:
         try:
-            return datetime.strptime(date_str.strip(), fmt)
-        except ValueError:
+
+            result = subprocess.run(
+                [path, "--version"],
+                capture_output=True,
+                timeout=5
+            )
+
+            if result.returncode == 0:
+                return path
+
+        except Exception:
             continue
+
     return None
 
 
-def extract_medicine_info(image_path: str) -> dict[str, Any]:
-    """
-    Full extraction pipeline.
-    Works with or without EasyOCR installed.
-    """
-    raw_text, ocr_conf_pct = extract_text_with_confidence(image_path)
+# ============================================================
+# IMAGE LOADING
+# ============================================================
 
-    logger.info(f"OCR text: \"{raw_text[:100]}..." if raw_text else "OCR text: (empty)")
-    logger.info(f"OCR confidence: {ocr_conf_pct}%")
+def _load_image(image_path: str):
 
-    # ── Field extraction (only meaningful if EasyOCR extracted text) ──────
-    medicine_name = _first_match(raw_text, [_MED_NAME_PATTERN])
-    manufacturer  = _first_match(raw_text, _MFR_PATTERNS)
-    batch_number  = _first_match(raw_text, _BATCH_PATTERNS)
+    img = cv2.imread(image_path)
 
-    all_dates = []
-    for pat in _DATE_PATTERNS:
-        all_dates += re.findall(pat, raw_text, re.IGNORECASE)
-    all_dates = list(dict.fromkeys(all_dates))
+    if img is not None:
+        return img
 
-    mfg_date_str = all_dates[0] if len(all_dates) > 0 else "Not Detected"
-    exp_date_str = all_dates[1] if len(all_dates) > 1 else "Not Detected"
+    try:
 
-    exp_match = re.search(
-        r"(?:exp(?:iry)?\.?\s*date?|use before|best before)"
-        r"[:\s]*(\d{2}[/-]\d{4}|\d{2}[/-]\d{2}[/-]\d{4})",
-        raw_text, re.IGNORECASE
+        pil = Image.open(image_path).convert("RGB")
+
+        img = cv2.cvtColor(
+            np.array(pil),
+            cv2.COLOR_RGB2BGR
+        )
+
+        return img
+
+    except Exception as e:
+
+        logger.error(
+            f"Cannot load image: {e}"
+        )
+
+        return None
+
+
+# ============================================================
+# BLUR DETECTION
+# ============================================================
+
+def _blur_score(img):
+
+    gray = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2GRAY
     )
-    if exp_match:
-        exp_date_str = exp_match.group(1).strip()
 
-    # ── Expiry check ──────────────────────────────────────────────────────
-    expiry_status   = "Unknown"
-    days_remaining  = 0
-    months_remaining = 0
+    score = cv2.Laplacian(
+        gray,
+        cv2.CV_64F
+    ).var()
 
-    exp_dt = _parse_date(exp_date_str)
-    if exp_dt:
-        today = datetime.utcnow()
-        delta = exp_dt - today
-        days_remaining   = delta.days
-        months_remaining = days_remaining // 30
-        expiry_status    = "Valid" if days_remaining >= 0 else "Expired"
+    return float(score)
+
+
+def _is_blurry(img):
+
+    score = _blur_score(img)
+
+    logger.info(
+        f"Image blur score: {score:.2f}"
+    )
+
+    return score < 120
+
+
+# ============================================================
+# IMAGE ENHANCEMENT
+# ============================================================
+
+def _enhance_image(img):
+
+    """
+    Improve blurry medicine images before OCR.
+    """
+
+    # --------------------------------------------------------
+    # Upscale
+    # --------------------------------------------------------
+
+    h, w = img.shape[:2]
+
+    min_dimension = min(h, w)
+
+    if min_dimension < 1200:
+
+        scale = 1200 / min_dimension
+
+        scale = min(scale, 3.0)
+
+        img = cv2.resize(
+            img,
+            None,
+            fx=scale,
+            fy=scale,
+            interpolation=cv2.INTER_CUBIC
+        )
+
+    # --------------------------------------------------------
+    # Grayscale
+    # --------------------------------------------------------
+
+    gray = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    # --------------------------------------------------------
+    # Denoise
+    # --------------------------------------------------------
+
+    denoised = cv2.fastNlMeansDenoising(
+        gray,
+        None,
+        h=10,
+        templateWindowSize=7,
+        searchWindowSize=21
+    )
+
+    # --------------------------------------------------------
+    # CLAHE
+    # --------------------------------------------------------
+
+    clahe = cv2.createCLAHE(
+        clipLimit=3.0,
+        tileGridSize=(8, 8)
+    )
+
+    enhanced = clahe.apply(
+        denoised
+    )
+
+    # --------------------------------------------------------
+    # Sharpen
+    # --------------------------------------------------------
+
+    kernel = np.array(
+        [
+            [0, -1, 0],
+            [-1, 5, -1],
+            [0, -1, 0]
+        ],
+        dtype=np.float32
+    )
+
+    sharpened = cv2.filter2D(
+        enhanced,
+        -1,
+        kernel
+    )
+
+    # --------------------------------------------------------
+    # Strong sharpen
+    # --------------------------------------------------------
+
+    blur = cv2.GaussianBlur(
+        enhanced,
+        (0, 0),
+        3
+    )
+
+    unsharp = cv2.addWeighted(
+        enhanced,
+        1.7,
+        blur,
+        -0.7,
+        0
+    )
 
     return {
-        "medicine_name":      medicine_name,
-        "manufacturer":       manufacturer,
-        "batch_number":       batch_number,
-        "manufacturing_date": mfg_date_str,
-        "expiry_date":        exp_date_str,
-        "expiry_status":      expiry_status,
-        "days_remaining":     max(days_remaining, 0),
-        "months_remaining":   max(months_remaining, 0),
-        "ocr_confidence":     ocr_conf_pct,
-        "raw_text":           raw_text,
+        "gray": gray,
+        "denoised": denoised,
+        "clahe": enhanced,
+        "sharp": sharpened,
+        "unsharp": unsharp
+    }
+
+
+# ============================================================
+# OCR VARIANTS
+# ============================================================
+
+def _get_image_variants(image_path):
+
+    img = _load_image(
+        image_path
+    )
+
+    if img is None:
+        return []
+
+    enhanced = _enhance_image(
+        img
+    )
+
+    variants = []
+
+    for name, image in enhanced.items():
+
+        variants.append(
+            (
+                name,
+                Image.fromarray(image)
+            )
+        )
+
+    # --------------------------------------------------------
+    # Threshold variants
+    # --------------------------------------------------------
+
+    base = enhanced["clahe"]
+
+    # OTSU
+    _, otsu = cv2.threshold(
+        base,
+        0,
+        255,
+        cv2.THRESH_BINARY +
+        cv2.THRESH_OTSU
+    )
+
+    variants.append(
+        (
+            "otsu",
+            Image.fromarray(otsu)
+        )
+    )
+
+    # Adaptive
+    adaptive = cv2.adaptiveThreshold(
+        base,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31,
+        10
+    )
+
+    variants.append(
+        (
+            "adaptive",
+            Image.fromarray(adaptive)
+        )
+    )
+
+    # Inverted
+    inverted = cv2.bitwise_not(
+        otsu
+    )
+
+    variants.append(
+        (
+            "inverted",
+            Image.fromarray(inverted)
+        )
+    )
+
+    # --------------------------------------------------------
+    # PIL enhancement
+    # --------------------------------------------------------
+
+    pil_img = Image.fromarray(
+        enhanced["clahe"]
+    )
+
+    contrast = ImageEnhance.Contrast(
+        pil_img
+    ).enhance(2.5)
+
+    sharp = ImageEnhance.Sharpness(
+        contrast
+    ).enhance(3.0)
+
+    variants.append(
+        (
+            "pil_enhanced",
+            sharp
+        )
+    )
+
+    return variants
+
+
+# ============================================================
+# TESSERACT OCR
+# ============================================================
+
+def _ocr_image(
+    pil_img,
+    tess_path,
+    psm
+):
+
+    try:
+
+        import pytesseract
+
+        pytesseract.pytesseract.tesseract_cmd = (
+            tess_path
+        )
+
+        data = pytesseract.image_to_data(
+            pil_img,
+            output_type=pytesseract.Output.DICT,
+            config=f"--psm {psm} --oem 3"
+        )
+
+        texts = []
+        confidences = []
+
+        for i, txt in enumerate(
+            data["text"]
+        ):
+
+            txt = txt.strip()
+
+            try:
+                conf = float(
+                    data["conf"][i]
+                )
+            except Exception:
+                conf = 0
+
+            if (
+                txt
+                and conf > 5
+            ):
+
+                texts.append(
+                    txt
+                )
+
+                confidences.append(
+                    conf
+                )
+
+        if texts:
+
+            text = " ".join(
+                texts
+            )
+
+            confidence = (
+                sum(confidences)
+                /
+                len(confidences)
+            )
+
+            return (
+                text,
+                confidence
+            )
+
+        # fallback
+        text = pytesseract.image_to_string(
+            pil_img,
+            config=f"--psm {psm} --oem 3"
+        ).strip()
+
+        if text:
+
+            return (
+                text,
+                45.0
+            )
+
+        return "", 0.0
+
+    except Exception as e:
+
+        logger.debug(
+            f"OCR error: {e}"
+        )
+
+        return "", 0.0
+
+
+# ============================================================
+# OCR ENGINE
+# ============================================================
+
+def extract_text_with_confidence(
+    image_path
+):
+
+    tess_path = _find_tesseract()
+
+    if tess_path is None:
+
+        logger.warning(
+            "Tesseract not found."
+        )
+
+        return (
+            "",
+            0.0
+        )
+
+    variants = _get_image_variants(
+        image_path
+    )
+
+    if not variants:
+
+        return (
+            "",
+            0.0
+        )
+
+    # PSM modes
+    psm_modes = [
+        6,
+        11,
+        12,
+        3,
+        4,
+        7
+    ]
+
+    best_text = ""
+    best_conf = 0
+    best_score = 0
+
+    for name, image in variants:
+
+        for psm in psm_modes:
+
+            text, conf = _ocr_image(
+                image,
+                tess_path,
+                psm
+            )
+
+            if not text:
+                continue
+
+            words = [
+                w for w in text.split()
+                if len(w) > 1
+            ]
+
+            word_count = len(words)
+
+            # More useful than just word count
+            useful_score = (
+                word_count * 2
+                +
+                conf * 0.5
+            )
+
+            if useful_score > best_score:
+
+                best_score = useful_score
+
+                best_text = text
+
+                best_conf = conf
+
+                logger.info(
+                    f"NEW OCR RESULT → "
+                    f"{name}/PSM{psm}"
+                )
+
+                logger.info(
+                    f"Text: {text[:300]}"
+                )
+
+    if best_text:
+
+        logger.info(
+            f"FINAL OCR → "
+            f"{best_conf:.2f}% confidence"
+        )
+
+        return (
+            best_text,
+            round(best_conf, 2)
+        )
+
+    return (
+        "",
+        0.0
+    )
+
+
+# ============================================================
+# FIELD EXTRACTION
+# ============================================================
+
+SKIP_WORDS = {
+    "EACH",
+    "STORE",
+    "OVER",
+    "MADE",
+    "REGD",
+    "TRADE",
+    "MARK",
+    "DOSAGE",
+    "DOSE",
+    "INDIA",
+    "DIRECTED",
+    "PHYSICIAN",
+    "TEMPERATURE",
+    "EXCEEDING",
+    "INJURIOUS",
+    "TABLET",
+    "TABLETS",
+    "CAPSULE",
+    "CAPSULES",
+    "INJECTION",
+    "WARNING",
+    "KEEP",
+    "CHILDREN",
+    "REACH",
+    "SCHEDULE",
+    "DRUG",
+    "PRESCRIPTION",
+    "ONLY",
+}
+
+
+# ============================================================
+# MEDICINE NAME
+# ============================================================
+
+def _extract_medicine_name(text):
+
+    if not text.strip():
+        return "Not Detected"
+
+    patterns = [
+
+        # Dolo 650
+        r"\b([A-Za-z][A-Za-z\-]{2,})\s*(\d{2,4})\s*(?:mg|ml|mcg|g)?\b",
+
+        # Paracetamol 650mg
+        r"\b([A-Za-z][A-Za-z\s\-]{2,})\s+"
+        r"(\d{2,4}\s*(?:mg|ml|mcg|g|IU))\b",
+
+        # Brand:
+        r"(?:brand|trade|product|medicine|drug)"
+        r"\s*(?:name)?\s*[:\-]\s*"
+        r"([A-Za-z][A-Za-z0-9\-\s]+)",
+
+    ]
+
+    for pattern in patterns:
+
+        matches = re.finditer(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        for match in matches:
+
+            groups = match.groups()
+
+            name = " ".join(
+                g.strip()
+                for g in groups
+                if g
+            )
+
+            words = name.upper().split()
+
+            if any(
+                w in SKIP_WORDS
+                for w in words
+            ):
+                continue
+
+            if len(name) > 2:
+
+                return name[:60]
+
+    # fallback
+    for token in text.split():
+
+        token = token.strip(
+            ".,:;-/()[]"
+        )
+
+        if (
+            len(token) >= 4
+            and token[0].isalpha()
+            and token.upper()
+            not in SKIP_WORDS
+        ):
+
+            return token[:50]
+
+    return "Not Detected"
+
+
+# ============================================================
+# MANUFACTURER
+# ============================================================
+
+def _extract_manufacturer(text):
+
+    if not text.strip():
+        return "Not Detected"
+
+    patterns = [
+
+        r"(?:manufactured\s+by|"
+        r"manufactured\s+for|"
+        r"mfg\.?\s*by|"
+        r"mfd\.?\s*by|"
+        r"marketed\s+by|"
+        r"distributed\s+by)"
+        r"\s*[:\-]?\s*"
+        r"([A-Za-z][A-Za-z\s&\.]+)",
+
+        r"\b([A-Z][A-Z\s&]{3,}"
+        r"(?:PHARMA|LABS|"
+        r"LABORATORIES|"
+        r"HEALTHCARE|"
+        r"PHARMACEUTICALS))\b",
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            result = re.sub(
+                r"\s+",
+                " ",
+                match.group(1)
+            ).strip()
+
+            if len(result) > 3:
+
+                return result[:80]
+
+    return "Not Detected"
+
+
+# ============================================================
+# BATCH NUMBER
+# ============================================================
+
+def _extract_batch(text):
+
+    if not text.strip():
+        return "Not Detected"
+
+    patterns = [
+
+        r"(?:batch|batch\s*no|"
+        r"lot|lot\s*no|"
+        r"b\.?\s*no)"
+        r"\s*[:\-#]?\s*"
+        r"([A-Z0-9][A-Z0-9\-\/\.]{2,20})",
+
+        r"\b([A-Z]{1,4}\d{2,10})\b",
+
+        r"\b([A-Z0-9]{3,}"
+        r"[\-\/]"
+        r"[A-Z0-9]{2,12})\b",
+    ]
+
+    for pattern in patterns:
+
+        matches = re.finditer(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        for match in matches:
+
+            result = match.group(
+                1
+            ).strip().upper()
+
+            if len(result) >= 4:
+
+                return result
+
+    return "Not Detected"
+
+
+# ============================================================
+# DATE EXTRACTION
+# ============================================================
+
+def _extract_dates(text):
+
+    if not text.strip():
+
+        return (
+            "Not Detected",
+            "Not Detected"
+        )
+
+    # Standard formats
+    date_patterns = [
+
+        r"\b\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}\b",
+
+        r"\b\d{2}[\/\-\.]\d{4}\b",
+
+        r"\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2}\b",
+
+        r"\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b",
+
+        r"\b(?:JAN|FEB|MAR|APR|MAY|JUN|"
+        r"JUL|AUG|SEP|OCT|NOV|DEC)"
+        r"[A-Z]*\.?\s+\d{4}\b",
+
+        r"\b\d{1,2}\.\d{4}\b",
+
+        r"\b\d{1,2}[\/\-]\d{2}\b",
+    ]
+
+    all_dates = []
+
+    for pattern in date_patterns:
+
+        matches = re.findall(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        for date in matches:
+
+            date = date.strip()
+
+            if date not in all_dates:
+
+                all_dates.append(
+                    date
+                )
+
+    # --------------------------------------------------------
+    # Explicit EXP date
+    # --------------------------------------------------------
+
+    exp_patterns = [
+
+        r"(?:exp|expiry|expiry\s*date|"
+        r"expires|use\s*before|"
+        r"best\s*before)"
+        r"\s*[:\-]?\s*"
+        r"([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})",
+
+        r"(?:exp|expiry|"
+        r"use\s*before|best\s*before)"
+        r"\s*[:\-]?\s*"
+        r"([0-9]{1,2}[\/\-\.][0-9]{4})",
+
+        r"(?:exp|expiry)"
+        r"\s*[:\-]?\s*"
+        r"([A-Za-z]{3,9}\.?\s*\d{4})",
+    ]
+
+    exp_date = "Not Detected"
+
+    for pattern in exp_patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            exp_date = match.group(
+                1
+            ).strip()
+
+            break
+
+    # --------------------------------------------------------
+    # Explicit MFG date
+    # --------------------------------------------------------
+
+    mfg_patterns = [
+
+        r"(?:mfg|mfd|manufactured)"
+        r"\s*(?:date|on)?"
+        r"\s*[:\-]?\s*"
+        r"([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})",
+
+        r"(?:mfg|mfd|manufactured)"
+        r"\s*(?:date|on)?"
+        r"\s*[:\-]?\s*"
+        r"([0-9]{1,2}[\/\-\.][0-9]{4})",
+    ]
+
+    mfg_date = "Not Detected"
+
+    for pattern in mfg_patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            mfg_date = match.group(
+                1
+            ).strip()
+
+            break
+
+    # --------------------------------------------------------
+    # Fallback
+    # --------------------------------------------------------
+
+    if exp_date == "Not Detected":
+
+        if len(all_dates) >= 2:
+
+            # Usually first = MFG
+            # second = EXP
+            if mfg_date == "Not Detected":
+
+                mfg_date = all_dates[0]
+
+            exp_date = all_dates[1]
+
+        elif len(all_dates) == 1:
+
+            exp_date = all_dates[0]
+
+    return (
+        mfg_date,
+        exp_date
+    )
+
+
+# ============================================================
+# DATE PARSER
+# ============================================================
+
+def _parse_date(date_string):
+
+    if not date_string:
+        return None
+
+    if date_string == "Not Detected":
+        return None
+
+    date_string = date_string.strip()
+
+    formats = [
+
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%d.%m.%Y",
+
+        "%d/%m/%y",
+        "%d-%m-%y",
+        "%d.%m.%y",
+
+        "%m/%Y",
+        "%m-%Y",
+        "%m.%Y",
+
+        "%Y-%m-%d",
+
+        "%b %Y",
+        "%b. %Y",
+
+        "%B %Y",
+
+        "%d/%m",
+        "%d-%m",
+        "%d.%m",
+    ]
+
+    for fmt in formats:
+
+        try:
+
+            return datetime.strptime(
+                date_string,
+                fmt
+            )
+
+        except ValueError:
+            continue
+
+    return None
+
+
+# ============================================================
+# EXPIRY
+# ============================================================
+
+def _check_expiry(expiry_string):
+
+    dt = _parse_date(
+        expiry_string
+    )
+
+    if dt is None:
+
+        return (
+            "Unknown",
+            0,
+            0
+        )
+
+    now = datetime.now()
+
+    # If only month/year is provided,
+    # consider end of that month.
+    if (
+        dt.day == 1
+        and dt.month != 1
+    ):
+
+        pass
+
+    days = (
+        dt - now
+    ).days
+
+    months = days // 30
+
+    if days >= 0:
+
+        return (
+            "Valid",
+            days,
+            max(months, 0)
+        )
+
+    return (
+        "Expired",
+        0,
+        0
+    )
+
+
+# ============================================================
+# MAIN OCR FUNCTION
+# ============================================================
+
+def extract_medicine_info(
+    image_path: str
+):
+
+    logger.info(
+        f"Starting OCR: {image_path}"
+    )
+
+    raw_text, ocr_confidence = (
+        extract_text_with_confidence(
+            image_path
+        )
+    )
+
+    # --------------------------------------------------------
+    # OCR word count
+    # --------------------------------------------------------
+
+    word_count = (
+        len(raw_text.split())
+        if raw_text
+        else 0
+    )
+
+    # Improve confidence when useful text found
+    if word_count >= 10:
+
+        ocr_confidence = max(
+            ocr_confidence,
+            65
+        )
+
+    elif word_count >= 5:
+
+        ocr_confidence = max(
+            ocr_confidence,
+            50
+        )
+
+    elif word_count == 0:
+
+        ocr_confidence = 0
+
+    # --------------------------------------------------------
+    # Extract fields
+    # --------------------------------------------------------
+
+    medicine_name = (
+        _extract_medicine_name(
+            raw_text
+        )
+    )
+
+    manufacturer = (
+        _extract_manufacturer(
+            raw_text
+        )
+    )
+
+    batch_number = (
+        _extract_batch(
+            raw_text
+        )
+    )
+
+    manufacturing_date, expiry_date = (
+        _extract_dates(
+            raw_text
+        )
+    )
+
+    expiry_status, days_remaining, months_remaining = (
+        _check_expiry(
+            expiry_date
+        )
+    )
+
+    # --------------------------------------------------------
+    # Logging
+    # --------------------------------------------------------
+
+    logger.info(
+        "OCR RESULT"
+    )
+
+    logger.info(
+        f"Medicine: {medicine_name}"
+    )
+
+    logger.info(
+        f"Manufacturer: {manufacturer}"
+    )
+
+    logger.info(
+        f"Batch: {batch_number}"
+    )
+
+    logger.info(
+        f"MFG: {manufacturing_date}"
+    )
+
+    logger.info(
+        f"EXP: {expiry_date}"
+    )
+
+    logger.info(
+        f"OCR Confidence: {ocr_confidence:.2f}%"
+    )
+
+    # --------------------------------------------------------
+    # Return
+    # --------------------------------------------------------
+
+    return {
+
+        "medicine_name":
+            medicine_name,
+
+        "manufacturer":
+            manufacturer,
+
+        "batch_number":
+            batch_number,
+
+        "manufacturing_date":
+            manufacturing_date,
+
+        "expiry_date":
+            expiry_date,
+
+        "expiry_status":
+            expiry_status,
+
+        "days_remaining":
+            days_remaining,
+
+        "months_remaining":
+            months_remaining,
+
+        "ocr_confidence":
+            round(
+                ocr_confidence,
+                2
+            ),
+
+        "raw_text":
+            raw_text,
     }

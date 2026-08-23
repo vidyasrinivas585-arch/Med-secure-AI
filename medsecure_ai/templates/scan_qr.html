@@ -1,0 +1,879 @@
+{% extends "base.html" %}
+
+{% block title %}
+MedSecure AI — QR Code Scanner
+{% endblock %}
+
+
+{% block content %}
+
+<section class="py-5">
+
+    <div class="container">
+
+        <div class="row justify-content-center">
+
+            <div class="col-lg-7">
+
+
+                <!-- =================================================
+                     HEADER
+                     ================================================= -->
+
+                <div class="text-center mb-4">
+
+                    <span
+                        class="badge bg-primary-soft text-primary px-3 py-2 mb-2">
+
+                        <i class="bi bi-qr-code me-1"></i>
+
+                        QR Code / Barcode Scanner
+
+                    </span>
+
+
+                    <h2 class="fw-bold">
+
+                        Scan Medicine QR Code
+
+                    </h2>
+
+
+                    <p class="text-muted">
+
+                        Upload a medicine package image
+                        containing a QR code or barcode.
+                        MedSecure AI will extract all
+                        details automatically.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     WHAT WE DETECT
+                     ================================================= -->
+
+                <div class="row g-3 mb-4">
+
+
+                    <div class="col-4">
+
+                        <div
+                            class="text-center p-3 bg-primary-soft rounded-3">
+
+                            <i
+                                class="bi bi-qr-code fs-2 text-primary d-block mb-1">
+                            </i>
+
+                            <span class="small fw-semibold">
+
+                                QR Code
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-4">
+
+                        <div
+                            class="text-center p-3 bg-success-soft rounded-3">
+
+                            <i
+                                class="bi bi-upc-scan fs-2 text-success d-block mb-1">
+                            </i>
+
+                            <span class="small fw-semibold">
+
+                                Barcode
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-4">
+
+                        <div
+                            class="text-center p-3 bg-warning-soft rounded-3">
+
+                            <i
+                                class="bi bi-shield-check fs-2 text-warning d-block mb-1">
+                            </i>
+
+                            <span class="small fw-semibold">
+
+                                GS1 Standard
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     UPLOAD CARD
+                     ================================================= -->
+
+                <div
+                    class="card border-0 shadow-sm rounded-4 p-4">
+
+
+                    <form
+                        id="qrForm"
+                        action="{{ url_for('analyze_qr') }}"
+                        method="POST"
+                        enctype="multipart/form-data">
+
+
+                        <!-- LANGUAGE -->
+
+                        <div class="mb-4">
+
+                            <label class="form-label fw-semibold">
+
+                                <i
+                                    class="bi bi-translate me-1 text-primary">
+                                </i>
+
+                                Select Language
+
+                            </label>
+
+
+                            <div class="d-flex gap-3">
+
+
+                                <div class="form-check">
+
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="language"
+                                        id="lang-en"
+                                        value="en">
+
+                                    <label
+                                        class="form-check-label"
+                                        for="lang-en">
+
+                                        English
+
+                                    </label>
+
+                                </div>
+
+
+                                <div class="form-check">
+
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="language"
+                                        id="lang-kn"
+                                        value="kn">
+
+                                    <label
+                                        class="form-check-label"
+                                        for="lang-kn">
+
+                                        ಕನ್ನಡ
+
+                                    </label>
+
+                                </div>
+
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- =================================================
+                             DROP ZONE
+                             ================================================= -->
+
+                        <div class="mb-4">
+
+
+                            <label class="form-label fw-semibold">
+
+                                <i
+                                    class="bi bi-image me-1 text-primary">
+                                </i>
+
+                                Medicine Package Image
+
+                            </label>
+
+
+                            <div
+                                id="dropZone"
+                                class="drop-zone rounded-4 border-2 border-dashed p-5 text-center">
+
+
+                                <i
+                                    class="bi bi-qr-code-scan fs-1 text-primary opacity-75 mb-3 d-block">
+                                </i>
+
+
+                                <p class="mb-1 fw-semibold">
+
+                                    Click to upload or drag & drop
+
+                                </p>
+
+
+                                <p class="text-muted small mb-0">
+
+                                    PNG, JPG — Max 10 MB
+
+                                    <br>
+
+                                    <span class="text-primary">
+
+                                        Tip: Keep QR code clear and well-lit
+
+                                    </span>
+
+                                </p>
+
+
+                            </div>
+
+
+                            <input
+                                type="file"
+                                id="qrInput"
+                                name="image"
+                                accept=".jpg,.jpeg,.png,.webp"
+                                class="d-none"
+                                required>
+
+                        </div>
+
+
+
+                        <!-- =================================================
+                             PREVIEW
+                             ================================================= -->
+
+                        <div
+                            id="previewSection"
+                            class="mb-4 d-none">
+
+
+                            <label
+                                class="form-label fw-semibold text-success">
+
+                                <i
+                                    class="bi bi-check-circle me-1">
+                                </i>
+
+                                Selected Image
+
+                            </label>
+
+
+                            <div class="text-center">
+
+                                <img
+                                    id="previewImg"
+                                    src="#"
+                                    alt="Preview"
+                                    class="img-fluid rounded-3 shadow-sm"
+                                    style="max-height:240px">
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- =================================================
+                             TIPS
+                             ================================================= -->
+
+                        <div
+                            class="alert alert-primary border-0 rounded-3 mb-4 small">
+
+
+                            <i
+                                class="bi bi-lightbulb me-2">
+                            </i>
+
+
+                            <strong>
+
+                                Tips for best QR scanning:
+
+                            </strong>
+
+
+                            Hold the camera steady,
+                            ensure good lighting,
+                            keep QR code flat and undamaged.
+
+
+                            <br><br>
+
+
+                            Works with QR codes,
+                            barcodes, and GS1 DataMatrix codes.
+
+                        </div>
+
+
+
+                        <!-- =================================================
+                             SUBMIT
+                             ================================================= -->
+
+                        <div class="d-grid">
+
+                            <button
+                                type="submit"
+                                id="scanBtn"
+                                class="btn btn-primary btn-lg rounded-3"
+                                disabled>
+
+                                <i
+                                    class="bi bi-qr-code-scan me-2">
+                                </i>
+
+                                Scan QR Code
+
+                            </button>
+
+                        </div>
+
+
+                    </form>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     SUPPORTED FORMATS
+                     ================================================= -->
+
+                <div
+                    class="card border-0 shadow-sm rounded-4 mt-4 p-4">
+
+
+                    <h6 class="fw-bold mb-3">
+
+                        <i
+                            class="bi bi-info-circle text-primary me-2">
+                        </i>
+
+                        Supported QR Data Formats
+
+                    </h6>
+
+
+                    <div
+                        class="row g-2 small text-muted">
+
+
+                        <div class="col-6">
+
+                            <div
+                                class="d-flex align-items-start gap-2">
+
+                                <i
+                                    class="bi bi-check2 text-success mt-1">
+                                </i>
+
+                                <span>
+
+                                    <strong>JSON</strong>
+                                    — {"name":"...","batch":"..."}
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-6">
+
+                            <div
+                                class="d-flex align-items-start gap-2">
+
+                                <i
+                                    class="bi bi-check2 text-success mt-1">
+                                </i>
+
+                                <span>
+
+                                    <strong>URL</strong>
+                                    — https://verify.cipla.com/?batch=...
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-6">
+
+                            <div
+                                class="d-flex align-items-start gap-2">
+
+                                <i
+                                    class="bi bi-check2 text-success mt-1">
+                                </i>
+
+                                <span>
+
+                                    <strong>GS1</strong>
+                                    — (01)07290...(17)260630(10)BT...
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-6">
+
+                            <div
+                                class="d-flex align-items-start gap-2">
+
+                                <i
+                                    class="bi bi-check2 text-success mt-1">
+                                </i>
+
+                                <span>
+
+                                    <strong>Pipe</strong>
+                                    — Name|Cipla|BT123|06/2026
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     PROCESSING OVERLAY
+     ========================================================= -->
+
+<div
+    id="processingOverlay"
+    class="processing-overlay d-none">
+
+
+    <div class="text-center text-white">
+
+
+        <div
+            class="spinner-border mb-3"
+            style="width:3rem;height:3rem">
+        </div>
+
+
+        <h4 class="fw-bold mb-2">
+
+            Scanning QR Code...
+
+        </h4>
+
+
+        <p
+            id="processingStep"
+            class="text-white-50">
+
+            Detecting QR patterns...
+
+        </p>
+
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block scripts %}
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+
+        const dropZone =
+            document.getElementById(
+                "dropZone"
+            );
+
+
+        const qrInput =
+            document.getElementById(
+                "qrInput"
+            );
+
+
+        const preview =
+            document.getElementById(
+                "previewSection"
+            );
+
+
+        const previewImg =
+            document.getElementById(
+                "previewImg"
+            );
+
+
+        const scanBtn =
+            document.getElementById(
+                "scanBtn"
+            );
+
+
+        const overlay =
+            document.getElementById(
+                "processingOverlay"
+            );
+
+
+        /* ==========================================
+           CLICK UPLOAD
+           ========================================== */
+
+        dropZone.addEventListener(
+            "click",
+            function () {
+
+                qrInput.click();
+
+            }
+        );
+
+
+        /* ==========================================
+           DRAG OVER
+           ========================================== */
+
+        dropZone.addEventListener(
+            "dragover",
+            function (e) {
+
+                e.preventDefault();
+
+                dropZone.classList.add(
+                    "dragover"
+                );
+
+            }
+        );
+
+
+        /* ==========================================
+           DRAG LEAVE
+           ========================================== */
+
+        dropZone.addEventListener(
+            "dragleave",
+            function () {
+
+                dropZone.classList.remove(
+                    "dragover"
+                );
+
+            }
+        );
+
+
+        /* ==========================================
+           DROP
+           ========================================== */
+
+        dropZone.addEventListener(
+            "drop",
+            function (e) {
+
+                e.preventDefault();
+
+                dropZone.classList.remove(
+                    "dragover"
+                );
+
+
+                if (
+                    e.dataTransfer.files &&
+                    e.dataTransfer.files[0]
+                ) {
+
+                    setFile(
+                        e.dataTransfer.files[0]
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* ==========================================
+           FILE SELECT
+           ========================================== */
+
+        qrInput.addEventListener(
+            "change",
+            function (e) {
+
+                if (
+                    e.target.files &&
+                    e.target.files[0]
+                ) {
+
+                    setFile(
+                        e.target.files[0]
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* ==========================================
+           SET FILE
+           ========================================== */
+
+        function setFile(file) {
+
+
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+            ];
+
+
+            if (
+                !allowedTypes.includes(
+                    file.type
+                )
+            ) {
+
+                alert(
+                    localStorage.getItem(
+                        "medsecure_language"
+                    ) === "kn"
+                        ? "ದಯವಿಟ್ಟು JPG, PNG ಅಥವಾ WEBP ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ."
+                        : "Please select a JPG, PNG or WEBP image."
+                );
+
+                return;
+
+            }
+
+
+            if (
+                file.size >
+                10 * 1024 * 1024
+            ) {
+
+                alert(
+                    localStorage.getItem(
+                        "medsecure_language"
+                    ) === "kn"
+                        ? "ಚಿತ್ರದ ಗಾತ್ರ 10 MB ಗಿಂತ ಕಡಿಮೆ ಇರಬೇಕು."
+                        : "Image size must be less than 10 MB."
+                );
+
+                return;
+
+            }
+
+
+            const dt =
+                new DataTransfer();
+
+
+            dt.items.add(file);
+
+
+            qrInput.files =
+                dt.files;
+
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function (e) {
+
+                    previewImg.src =
+                        e.target.result;
+
+                };
+
+
+            reader.readAsDataURL(file);
+
+
+            preview.classList.remove(
+                "d-none"
+            );
+
+
+            scanBtn.disabled =
+                false;
+
+
+            dropZone.style.borderColor =
+                "var(--bs-primary)";
+
+        }
+
+
+
+        /* ==========================================
+           FORM SUBMIT
+           ========================================== */
+
+        document
+            .getElementById("qrForm")
+            .addEventListener(
+                "submit",
+                function () {
+
+
+                    overlay.classList.remove(
+                        "d-none"
+                    );
+
+
+                    const isKannada =
+                        localStorage.getItem(
+                            "medsecure_language"
+                        ) === "kn";
+
+
+                    const steps =
+                        isKannada
+
+                            ? [
+
+                                "QR ಮಾದರಿಗಳನ್ನು ಪತ್ತೆಹಚ್ಚಲಾಗುತ್ತಿದೆ...",
+
+                                "ಹಲವು ಸ್ಕ್ಯಾನಿಂಗ್ ವಿಧಾನಗಳನ್ನು ಪ್ರಯತ್ನಿಸಲಾಗುತ್ತಿದೆ...",
+
+                                "QR ಡೇಟಾವನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
+
+                                "AI ಪರಿಶೀಲನೆ ನಡೆಸಲಾಗುತ್ತಿದೆ..."
+
+                              ]
+
+                            : [
+
+                                "Detecting QR patterns...",
+
+                                "Trying multiple scan strategies...",
+
+                                "Parsing QR data...",
+
+                                "Running AI verification..."
+
+                              ];
+
+
+                    let i = 0;
+
+
+                    document
+                        .getElementById(
+                            "processingStep"
+                        )
+                        .textContent =
+                        steps[0];
+
+
+                    const interval =
+                        setInterval(
+                            function () {
+
+
+                                i++;
+
+
+                                if (
+                                    i <
+                                    steps.length
+                                ) {
+
+                                    document
+                                        .getElementById(
+                                            "processingStep"
+                                        )
+                                        .textContent =
+                                        steps[i];
+
+                                }
+
+
+                                else {
+
+                                    clearInterval(
+                                        interval
+                                    );
+
+                                }
+
+
+                            },
+                            1000
+                        );
+
+                }
+            );
+
+    }
+
+);
+
+</script>
+
+{% endblock %}

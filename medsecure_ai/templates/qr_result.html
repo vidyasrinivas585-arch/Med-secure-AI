@@ -1,0 +1,1027 @@
+{% extends "base.html" %}
+
+{% block title %}
+MedSecure AI — QR Scan Result
+{% endblock %}
+
+
+{% block content %}
+
+<section class="py-5">
+
+<div class="container">
+
+
+<!-- =========================================================
+     ACTION BAR
+     ========================================================= -->
+
+<div
+    class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+
+
+    <a
+        href="{{ url_for('scan_qr_page') }}"
+        class="btn btn-outline-secondary btn-sm">
+
+        <i class="bi bi-arrow-left me-1"></i>
+
+        Scan Another
+
+    </a>
+
+
+    <div class="d-flex gap-2">
+
+
+        <a
+            href="{{ url_for('upload') }}"
+            class="btn btn-outline-primary btn-sm">
+
+            <i class="bi bi-shield-check me-1"></i>
+
+            Full AI Analysis
+
+        </a>
+
+
+        {% if report_id and report_id != 'session' %}
+
+        <a
+            href="{{ url_for('download_report', report_id=report_id) }}"
+            class="btn btn-success btn-sm">
+
+            <i class="bi bi-file-pdf me-1"></i>
+
+            Download PDF
+
+        </a>
+
+        {% endif %}
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     QR BANNER
+     ========================================================= -->
+
+{% if qr_result.found %}
+
+    {% set banner_class = 'success' %}
+
+    {% set banner_icon = 'bi-qr-code' %}
+
+    {% set banner_text =
+        qr_result.qr_type ~
+        ' Detected Successfully'
+    %}
+
+{% else %}
+
+    {% set banner_class = 'warning' %}
+
+    {% set banner_icon =
+        'bi-exclamation-triangle'
+    %}
+
+    {% set banner_text =
+        'No QR Code Found in Image'
+    %}
+
+{% endif %}
+
+
+<div
+    class="result-banner
+           bg-{{ banner_class }}
+           text-white
+           rounded-4
+           p-4
+           mb-4
+           shadow">
+
+
+<div class="row align-items-center g-3">
+
+
+    <div class="col-auto">
+
+        <i
+            class="bi {{ banner_icon }}"
+            style="font-size:3rem">
+        </i>
+
+    </div>
+
+
+    <div class="col">
+
+
+        <h3 class="fw-bold mb-1">
+
+            {{ banner_text }}
+
+        </h3>
+
+
+        <p class="mb-0 opacity-75">
+
+
+        {% if qr_result.found %}
+
+            Format:
+
+            <strong>
+                {{ report.qr_format }}
+            </strong>
+
+            &nbsp;|&nbsp;
+
+            Scan confidence:
+
+            <strong>
+                {{ report.qr_confidence }}%
+            </strong>
+
+
+        {% else %}
+
+            No QR/barcode pattern was detected.
+            Try a clearer photo with better lighting.
+
+        {% endif %}
+
+
+        </p>
+
+
+    </div>
+
+
+    {% if qr_result.found %}
+
+    <div class="col-auto">
+
+        <div
+            class="score-circle bg-white text-{{ banner_class }} p-3 rounded-circle text-center">
+
+
+            <span class="fw-bold fs-5">
+
+                {{ report.qr_confidence | int }}%
+
+            </span>
+
+
+            <div style="font-size:.65rem">
+
+                QR Conf
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+</div>
+
+</div>
+
+
+
+<div class="row g-4">
+
+
+<!-- =========================================================
+     LEFT
+     ========================================================= -->
+
+<div class="col-lg-7">
+
+
+<!-- MEDICINE INFORMATION -->
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div
+    class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
+
+
+<h5 class="fw-bold">
+
+<i
+    class="bi bi-capsule text-primary me-2">
+</i>
+
+Medicine Information
+
+
+{% if qr_result.found %}
+
+<span
+    class="badge bg-success-soft text-success ms-2 fs-7">
+
+    From QR
+
+</span>
+
+{% endif %}
+
+</h5>
+
+</div>
+
+
+<div class="card-body px-4 pb-4">
+
+
+<table
+    class="table table-borderless result-table mb-0">
+
+
+<tbody>
+
+
+<tr>
+
+<td
+    class="text-muted fw-medium"
+    style="width:42%">
+
+    Medicine Name
+
+</td>
+
+<td class="fw-semibold">
+
+    {{ report.medicine_name }}
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Manufacturer
+
+</td>
+
+<td>
+
+    {{ report.manufacturer }}
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Batch Number
+
+</td>
+
+<td>
+
+    <code>
+        {{ report.batch_number }}
+    </code>
+
+</td>
+
+</tr>
+
+
+{% if report.serial_number
+      and report.serial_number != 'N/A' %}
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Serial Number
+
+</td>
+
+<td>
+
+<code>
+    {{ report.serial_number }}
+</code>
+
+</td>
+
+</tr>
+
+{% endif %}
+
+
+
+{% if report.gtin
+      and report.gtin != 'N/A' %}
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    GTIN
+
+</td>
+
+<td>
+
+<code>
+    {{ report.gtin }}
+</code>
+
+</td>
+
+</tr>
+
+{% endif %}
+
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Manufacturing Date
+
+</td>
+
+<td>
+
+    {{ report.manufacturing_date }}
+
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Expiry Date
+
+</td>
+
+<td>
+
+    {{ report.expiry_date }}
+
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Expiry Status
+
+</td>
+
+<td>
+
+
+{% if report.expiry_status == 'Valid' %}
+
+<span
+    class="badge bg-success-soft text-success">
+
+    ✅ Valid
+
+</span>
+
+
+<span class="text-muted small ms-2">
+
+    {{ report.days_remaining }}
+    days remaining
+
+</span>
+
+
+{% elif report.expiry_status == 'Expired' %}
+
+<span
+    class="badge bg-danger-soft text-danger">
+
+    ❌ Expired
+
+</span>
+
+
+{% else %}
+
+<span
+    class="badge bg-secondary-soft text-secondary">
+
+    Unknown
+
+</span>
+
+{% endif %}
+
+
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    QR Type
+
+</td>
+
+<td>
+
+<i
+    class="bi bi-qr-code text-primary me-1">
+</i>
+
+{{ report.qr_type }}
+
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td class="text-muted fw-medium">
+
+    Data Format
+
+</td>
+
+<td>
+
+    {{ report.qr_format }}
+
+</td>
+
+</tr>
+
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+
+<!-- RAW QR -->
+
+{% if qr_result.raw_data %}
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div class="card-header bg-transparent border-0 p-0">
+
+
+<button
+    class="btn btn-link text-decoration-none w-100 text-start px-4 py-3"
+    data-bs-toggle="collapse"
+    data-bs-target="#rawQR">
+
+
+<i
+    class="bi bi-code-square text-primary me-2">
+</i>
+
+
+<span class="fw-semibold">
+
+    Raw QR Data
+
+</span>
+
+
+<i
+    class="bi bi-chevron-down float-end mt-1">
+</i>
+
+
+</button>
+
+</div>
+
+
+<div id="rawQR"
+     class="collapse show">
+
+
+<div class="card-body px-4 pb-4">
+
+
+<pre
+    class="bg-dark text-success rounded-3 p-3 small mb-0"
+    style="max-height:140px;overflow:auto">{{ qr_result.raw_data }}</pre>
+
+
+</div>
+
+</div>
+
+</div>
+
+{% endif %}
+
+
+
+<!-- IMAGE -->
+
+{% if report.image_path %}
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div
+    class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
+
+
+<h5 class="fw-bold">
+
+<i
+    class="bi bi-image text-primary me-2">
+</i>
+
+Uploaded Image
+
+</h5>
+
+</div>
+
+
+<div class="card-body text-center pb-4">
+
+
+<img
+    src="{{ url_for(
+        'static',
+        filename=report.image_path
+        .replace('static/', '')
+        .replace('static\\\\', '')
+    ) }}"
+    alt="Medicine Package"
+    class="img-fluid rounded-3 shadow-sm"
+    style="max-height:220px">
+
+
+</div>
+
+</div>
+
+{% endif %}
+
+
+</div>
+
+
+
+<!-- =========================================================
+     RIGHT
+     ========================================================= -->
+
+<div class="col-lg-5">
+
+
+<!-- AI -->
+
+{% set pred_class =
+    'success'
+    if report.prediction == 'Genuine'
+    else 'danger'
+%}
+
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div
+    class="card-body p-4 text-center">
+
+
+<h6
+    class="text-muted fw-medium mb-2">
+
+    AI Verification
+
+</h6>
+
+
+<div class="mb-2">
+
+
+<span
+    class="badge bg-{{ pred_class }}
+           px-3 py-2 fs-6">
+
+    {{ report.prediction }}
+
+</span>
+
+
+</div>
+
+
+<div class="text-muted small">
+
+    AI Confidence:
+
+    <strong
+        class="text-{{ pred_class }}">
+
+        {{ report.ai_confidence }}%
+
+    </strong>
+
+</div>
+
+
+</div>
+
+</div>
+
+
+
+<!-- RISK -->
+
+{% set risk_map = {
+    'Low':'success',
+    'Medium':'warning',
+    'High':'danger'
+} %}
+
+
+{% set risk_col =
+    risk_map.get(
+        report.risk_level,
+        'secondary'
+    )
+%}
+
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div
+    class="card-body p-4 text-center">
+
+
+<h6
+    class="text-muted fw-medium mb-3">
+
+    Risk Level
+
+</h6>
+
+
+<div
+    class="risk-badge
+           bg-{{ risk_col }}-soft
+           text-{{ risk_col }}
+           rounded-pill
+           px-4
+           py-2
+           fs-5
+           fw-bold
+           d-inline-block">
+
+    {{ report.risk_level }} Risk
+
+</div>
+
+
+</div>
+
+</div>
+
+
+
+<!-- SCORE -->
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div
+    class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
+
+
+<h5 class="fw-bold">
+
+<i
+    class="bi bi-bar-chart text-primary me-2">
+</i>
+
+Score Breakdown
+
+</h5>
+
+</div>
+
+
+<div class="card-body px-4 pb-4">
+
+
+{% set scores = [
+
+    (
+        'AI Confidence',
+        report.ai_confidence
+        | default(0)
+        | float,
+        'primary'
+    ),
+
+    (
+        'QR Confidence',
+        report.qr_confidence
+        | default(0)
+        | float,
+        'info'
+    ),
+
+    (
+        'Packaging Score',
+        report.packaging_score
+        | default(0)
+        | float,
+        'warning'
+    ),
+
+    (
+        'Authenticity',
+        report.authenticity_score
+        | default(0)
+        | float,
+        pred_class
+    )
+
+] %}
+
+
+{% for label, val, colour in scores %}
+
+
+<div class="mb-3">
+
+
+<div
+    class="d-flex justify-content-between small mb-1">
+
+
+<span class="text-muted">
+
+    {{ label }}
+
+</span>
+
+
+<span
+    class="fw-bold text-{{ colour }}">
+
+    {{ "%.1f"|format(val) }}%
+
+</span>
+
+
+</div>
+
+
+<div
+    class="progress rounded-pill"
+    style="height:10px;background:#E2E8F0">
+
+
+<div
+    class="progress-bar
+           bg-{{ colour }}
+           rounded-pill"
+    style="
+        width:{{ [val,100]|min }}%;
+        transition:width 1s ease
+    ">
+
+</div>
+
+</div>
+
+</div>
+
+
+{% endfor %}
+
+
+</div>
+
+</div>
+
+
+
+<!-- RECOMMENDATION -->
+
+<div
+    class="card border-0 shadow-sm rounded-4 mb-4">
+
+
+<div class="card-body p-4">
+
+
+<h6 class="fw-bold mb-2">
+
+
+<i
+    class="bi bi-lightbulb text-warning me-2">
+</i>
+
+
+Recommendation
+
+
+</h6>
+
+
+<p
+    class="text-muted small mb-0">
+
+    {{ report.recommendation }}
+
+</p>
+
+
+</div>
+
+</div>
+
+
+
+<!-- NO QR -->
+
+{% if not qr_result.found %}
+
+<div
+    class="card border-0 shadow-sm rounded-4 border-warning mb-4">
+
+
+<div class="card-body p-4">
+
+
+<h6
+    class="fw-bold text-warning mb-2">
+
+
+<i
+    class="bi bi-lightbulb me-2">
+</i>
+
+
+Why No QR Found?
+
+
+</h6>
+
+
+<ul
+    class="text-muted small mb-0 ps-3">
+
+
+<li>
+
+    QR code may be too small —
+    try zooming in
+
+</li>
+
+
+<li>
+
+    Poor lighting or shadows
+    on QR code
+
+</li>
+
+
+<li>
+
+    QR code is damaged
+    or scratched
+
+</li>
+
+
+<li>
+
+    This medicine may not
+    have a QR code
+
+</li>
+
+
+<li>
+
+    Try the
+
+    <a href="{{ url_for('upload') }}">
+
+        Full AI Analysis
+
+    </a>
+
+    instead
+
+</li>
+
+
+</ul>
+
+</div>
+
+</div>
+
+{% endif %}
+
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+{% endblock %}
+
+
+
+{% block scripts %}
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        /*
+         * base.html already loads i18n.js.
+         * This makes sure the selected
+         * language is applied to QR result.
+         */
+
+        const language =
+            localStorage.getItem(
+                "medsecure_language"
+            ) || "en";
+
+
+        if (
+            language === "kn" &&
+            typeof applyI18n === "function"
+        ) {
+
+            applyI18n("kn");
+
+        }
+
+    }
+);
+
+</script>
+
+{% endblock %}

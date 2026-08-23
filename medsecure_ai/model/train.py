@@ -1,239 +1,1054 @@
 """
 model/train.py
-MobileNetV2 Transfer Learning trainer for counterfeit medicine detection.
+MedSecure AI - Counterfeit vs Genuine Medicine Classifier
 
-Usage:
-    python model/train.py
+Dataset structure:
 
-Dataset expected at:
-    dataset/
-        genuine/      ← Class 0
-        counterfeit/  ← Class 1
+dataset/
+├── train/
+│   ├── counterfeit/
+│   └── genuine/
+├── val/
+│   ├── counterfeit/
+│   └── genuine/
+└── test/
+    ├── counterfeit/
+    └── genuine/
+
+Model:
+MobileNetV2 Transfer Learning
+
+Class mapping:
+counterfeit = 0
+genuine    = 1
 """
 
 import os
-import sys
+import json
 import numpy as np
 import matplotlib.pyplot as plt
-
-# ── TensorFlow / Keras imports ──────────────────────────────────────────────
 import tensorflow as tf
+
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, BatchNormalization
+
+from tensorflow.keras.layers import (
+    Dense,
+    GlobalAveragePooling2D,
+    Dropout,
+    BatchNormalization
+)
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
 from tensorflow.keras.callbacks import (
-    EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard
+    EarlyStopping,
+    ModelCheckpoint,
+    ReduceLROnPlateau,
+    TensorBoard
 )
 
-# ── Scikit-learn ─────────────────────────────────────────────────────────────
 from sklearn.utils.class_weight import compute_class_weight
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-IMG_SIZE      = (224, 224)
-BATCH_SIZE    = 32
-EPOCHS_FROZEN = 10   # Train only top layers first
-EPOCHS_FINE   = 20   # Then unfreeze last N base layers
-FINE_TUNE_AT  = 100  # Unfreeze from this layer index onward
-LEARNING_RATE = 1e-4
-DATASET_DIR   = "dataset"
-MODEL_DIR     = "trained_model"
-MODEL_PATH    = os.path.join(MODEL_DIR, "medicine_classifier.h5")
 
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+IMG_SIZE = (224, 224)
+BATCH_SIZE = 32
+
+EPOCHS_FROZEN = 10
+EPOCHS_FINE = 20
+
+FINE_TUNE_AT = 100
+
+LEARNING_RATE = 1e-4
+
+
+# ============================================================
+# DATASET PATHS
+# ============================================================
+
+DATASET_DIR = "dataset"
+
+TRAIN_DIR = os.path.join(
+    DATASET_DIR,
+    "train"
+)
+
+VAL_DIR = os.path.join(
+    DATASET_DIR,
+    "val"
+)
+
+TEST_DIR = os.path.join(
+    DATASET_DIR,
+    "test"
+)
+
+
+# ============================================================
+# MODEL PATHS
+# ============================================================
+
+MODEL_DIR = "trained_model"
+
+MODEL_PATH = os.path.join(
+    MODEL_DIR,
+    "medicine_classifier.keras"
+)
+
+CLASS_INDEX_PATH = os.path.join(
+    MODEL_DIR,
+    "class_indices.json"
+)
+
+
+# ============================================================
+# REQUIRED CLASSES
+# ============================================================
+
+REQUIRED_CLASSES = [
+    "counterfeit",
+    "genuine"
+]
+
+
+# ============================================================
+# CHECK DATASET
+# ============================================================
+
+def check_dataset():
+
+    print("\nChecking dataset structure...")
+    print("=" * 60)
+
+    required_dirs = [
+        TRAIN_DIR,
+        VAL_DIR,
+        TEST_DIR
+    ]
+
+    # --------------------------------------------------------
+    # Check train / val / test folders
+    # --------------------------------------------------------
+
+    for directory in required_dirs:
+
+        if not os.path.exists(directory):
+
+            print(
+                f"❌ Missing folder: {directory}"
+            )
+
+            return False
+
+
+    # --------------------------------------------------------
+    # Check class folders
+    # --------------------------------------------------------
+
+    for directory in required_dirs:
+
+        for cls in REQUIRED_CLASSES:
+
+            class_dir = os.path.join(
+                directory,
+                cls
+            )
+
+            if not os.path.exists(class_dir):
+
+                print(
+                    f"❌ Missing class folder: {class_dir}"
+                )
+
+                return False
+
+
+            # ------------------------------------------------
+            # Count images
+            # ------------------------------------------------
+
+            images = [
+                f
+                for f in os.listdir(class_dir)
+                if f.lower().endswith(
+                    (
+                        ".jpg",
+                        ".jpeg",
+                        ".png",
+                        ".webp"
+                    )
+                )
+            ]
+
+
+            print(
+                f"{class_dir} → {len(images)} images"
+            )
+
+
+            if len(images) == 0:
+
+                print(
+                    f"❌ No images found in {class_dir}"
+                )
+
+                return False
+
+
+    print("=" * 60)
+    print("✅ Dataset structure is correct.")
+
+    return True
+
+
+# ============================================================
+# DATA GENERATORS
+# ============================================================
 
 def build_data_generators():
-    """
-    Create ImageDataGenerators with augmentation for train/val/test splits.
-    80% train | 10% val | 10% test  (val_split=0.2 → 80 train / 20 val/test)
-    """
 
-    # Training augmentation — mirrors real-world capture variations
+    print("\nBuilding data generators...")
+    print("=" * 60)
+
+
+    # --------------------------------------------------------
+    # Training augmentation
+    # --------------------------------------------------------
+
     train_datagen = ImageDataGenerator(
+
         preprocessing_function=preprocess_input,
-        rotation_range=20,
+
+        rotation_range=15,
+
         zoom_range=0.15,
-        width_shift_range=0.15,
-        height_shift_range=0.15,
+
+        width_shift_range=0.10,
+
+        height_shift_range=0.10,
+
+        brightness_range=[
+            0.8,
+            1.2
+        ],
+
         horizontal_flip=True,
-        brightness_range=[0.7, 1.3],
-        fill_mode="nearest",
-        validation_split=0.2,
+
+        fill_mode="nearest"
     )
 
-    # Validation / test — only normalise, no augmentation
-    test_datagen = ImageDataGenerator(
-        preprocessing_function=preprocess_input,
-        validation_split=0.2,
+
+    # --------------------------------------------------------
+    # Validation
+    # --------------------------------------------------------
+
+    val_datagen = ImageDataGenerator(
+
+        preprocessing_function=preprocess_input
     )
+
+
+    # --------------------------------------------------------
+    # Test
+    # --------------------------------------------------------
+
+    test_datagen = ImageDataGenerator(
+
+        preprocessing_function=preprocess_input
+    )
+
+
+    # --------------------------------------------------------
+    # TRAIN GENERATOR
+    # --------------------------------------------------------
 
     train_gen = train_datagen.flow_from_directory(
-        DATASET_DIR,
+
+        TRAIN_DIR,
+
         target_size=IMG_SIZE,
+
         batch_size=BATCH_SIZE,
+
         class_mode="binary",
-        subset="training",
+
         shuffle=True,
-        seed=42,
+
+        seed=42
     )
 
-    val_gen = test_datagen.flow_from_directory(
-        DATASET_DIR,
+
+    # --------------------------------------------------------
+    # VALIDATION GENERATOR
+    # --------------------------------------------------------
+
+    val_gen = val_datagen.flow_from_directory(
+
+        VAL_DIR,
+
         target_size=IMG_SIZE,
+
         batch_size=BATCH_SIZE,
+
         class_mode="binary",
-        subset="validation",
-        shuffle=False,
-        seed=42,
+
+        shuffle=False
     )
 
-    print(f"Classes: {train_gen.class_indices}")   # {counterfeit: 0/1, genuine: 0/1}
-    return train_gen, val_gen
+
+    # --------------------------------------------------------
+    # TEST GENERATOR
+    # --------------------------------------------------------
+
+    test_gen = test_datagen.flow_from_directory(
+
+        TEST_DIR,
+
+        target_size=IMG_SIZE,
+
+        batch_size=BATCH_SIZE,
+
+        class_mode="binary",
+
+        shuffle=False
+    )
 
 
-def build_model() -> Model:
-    """
-    Build transfer-learning model on top of MobileNetV2 pre-trained on ImageNet.
+    # --------------------------------------------------------
+    # CLASS MAPPING
+    # --------------------------------------------------------
 
-    Architecture:
-        MobileNetV2 (frozen) → GlobalAveragePooling → BN → Dropout → Dense(256)
-        → BN → Dropout → Dense(1, sigmoid)
-    """
+    print("\n")
+    print("=" * 60)
+    print("CLASS MAPPING")
+    print("=" * 60)
+
+    print(
+        train_gen.class_indices
+    )
+
+
+    expected_mapping = {
+        "counterfeit": 0,
+        "genuine": 1
+    }
+
+
+    if train_gen.class_indices != expected_mapping:
+
+        print(
+            "\n⚠️ WARNING:"
+        )
+
+        print(
+            "Unexpected class mapping detected:"
+        )
+
+        print(
+            train_gen.class_indices
+        )
+
+    else:
+
+        print(
+            "\n✅ Correct class mapping:"
+        )
+
+        print(
+            "counterfeit = 0"
+        )
+
+        print(
+            "genuine = 1"
+        )
+
+
+    return (
+        train_gen,
+        val_gen,
+        test_gen
+    )
+
+
+# ============================================================
+# BUILD MODEL
+# ============================================================
+
+def build_model():
+
+    print("\nLoading MobileNetV2...")
+    print("=" * 60)
+
+
+    # --------------------------------------------------------
+    # MobileNetV2 base
+    # --------------------------------------------------------
+
     base_model = MobileNetV2(
+
         weights="imagenet",
+
         include_top=False,
-        input_shape=(*IMG_SIZE, 3),
+
+        input_shape=(
+            224,
+            224,
+            3
+        )
     )
-    base_model.trainable = False  # Freeze all base layers initially
+
+
+    # Initially freeze base model
+
+    base_model.trainable = False
+
+
+    # --------------------------------------------------------
+    # Classification head
+    # --------------------------------------------------------
 
     x = base_model.output
+
+
     x = GlobalAveragePooling2D()(x)
+
+
     x = BatchNormalization()(x)
-    x = Dropout(0.3)(x)
-    x = Dense(256, activation="relu")(x)
+
+
+    x = Dropout(
+        0.3
+    )(x)
+
+
+    x = Dense(
+        256,
+        activation="relu"
+    )(x)
+
+
     x = BatchNormalization()(x)
-    x = Dropout(0.3)(x)
-    output = Dense(1, activation="sigmoid")(x)  # Binary: 0=Genuine, 1=Counterfeit
-
-    model = Model(inputs=base_model.input, outputs=output)
-    return model, base_model
 
 
-def get_callbacks(phase: str) -> list:
-    """Return training callbacks."""
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    x = Dropout(
+        0.3
+    )(x)
+
+
+    output = Dense(
+        1,
+        activation="sigmoid"
+    )(x)
+
+
+    # --------------------------------------------------------
+    # Complete model
+    # --------------------------------------------------------
+
+    model = Model(
+
+        inputs=base_model.input,
+
+        outputs=output
+    )
+
+
+    print(
+        "✅ MobileNetV2 model created."
+    )
+
+
+    return (
+        model,
+        base_model
+    )
+
+
+# ============================================================
+# CALLBACKS
+# ============================================================
+
+def get_callbacks(phase):
+
+    os.makedirs(
+        MODEL_DIR,
+        exist_ok=True
+    )
+
+
     return [
+
         ModelCheckpoint(
+
             MODEL_PATH,
+
             monitor="val_accuracy",
+
             save_best_only=True,
-            verbose=1,
+
+            verbose=1
         ),
+
+
         EarlyStopping(
+
             monitor="val_loss",
+
             patience=5,
+
             restore_best_weights=True,
-            verbose=1,
+
+            verbose=1
         ),
+
+
         ReduceLROnPlateau(
+
             monitor="val_loss",
+
             factor=0.5,
-            patience=3,
+
+            patience=2,
+
             min_lr=1e-7,
-            verbose=1,
+
+            verbose=1
         ),
-        TensorBoard(log_dir=f"logs/{phase}"),
+
+
+        TensorBoard(
+
+            log_dir=f"logs/{phase}"
+        )
     ]
 
 
-def plot_history(history, phase: str):
-    """Save accuracy / loss plots."""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    axes[0].plot(history.history["accuracy"], label="Train Accuracy")
-    axes[0].plot(history.history["val_accuracy"], label="Val Accuracy")
-    axes[0].set_title(f"{phase} – Accuracy")
-    axes[0].legend()
+# ============================================================
+# PLOT TRAINING HISTORY
+# ============================================================
 
-    axes[1].plot(history.history["loss"], label="Train Loss")
-    axes[1].plot(history.history["val_loss"], label="Val Loss")
-    axes[1].set_title(f"{phase} – Loss")
-    axes[1].legend()
+def plot_history(
+    history,
+    phase
+):
+
+    os.makedirs(
+        MODEL_DIR,
+        exist_ok=True
+    )
+
+
+    # --------------------------------------------------------
+    # Accuracy plot
+    # --------------------------------------------------------
+
+    plt.figure(
+        figsize=(10, 5)
+    )
+
+
+    plt.plot(
+
+        history.history["accuracy"],
+
+        label="Train Accuracy"
+    )
+
+
+    plt.plot(
+
+        history.history["val_accuracy"],
+
+        label="Validation Accuracy"
+    )
+
+
+    plt.title(
+        f"{phase} Accuracy"
+    )
+
+
+    plt.xlabel(
+        "Epoch"
+    )
+
+
+    plt.ylabel(
+        "Accuracy"
+    )
+
+
+    plt.legend()
+
 
     plt.tight_layout()
-    plt.savefig(f"{MODEL_DIR}/{phase}_history.png")
-    print(f"Saved training plot: {MODEL_DIR}/{phase}_history.png")
+
+
+    plt.savefig(
+
+        os.path.join(
+
+            MODEL_DIR,
+
+            f"{phase}_accuracy.png"
+        )
+    )
+
+
     plt.close()
 
 
+    # --------------------------------------------------------
+    # Loss plot
+    # --------------------------------------------------------
+
+    plt.figure(
+        figsize=(10, 5)
+    )
+
+
+    plt.plot(
+
+        history.history["loss"],
+
+        label="Train Loss"
+    )
+
+
+    plt.plot(
+
+        history.history["val_loss"],
+
+        label="Validation Loss"
+    )
+
+
+    plt.title(
+        f"{phase} Loss"
+    )
+
+
+    plt.xlabel(
+        "Epoch"
+    )
+
+
+    plt.ylabel(
+        "Loss"
+    )
+
+
+    plt.legend()
+
+
+    plt.tight_layout()
+
+
+    plt.savefig(
+
+        os.path.join(
+
+            MODEL_DIR,
+
+            f"{phase}_loss.png"
+        )
+    )
+
+
+    plt.close()
+
+
+# ============================================================
+# TRAIN MODEL
+# ============================================================
+
 def train():
+
+    print("\n")
     print("=" * 60)
-    print("  MedSecure AI — MobileNetV2 Training")
-    print("=" * 60)
 
-    # Validate dataset
-    for cls in ["genuine", "counterfeit"]:
-        path = os.path.join(DATASET_DIR, cls)
-        if not os.path.isdir(path) or len(os.listdir(path)) == 0:
-            print(f"❌ Missing or empty dataset folder: {path}")
-            print("   Please add images before training.")
-            sys.exit(1)
-
-    train_gen, val_gen = build_data_generators()
-    model, base_model = build_model()
-
-    # Compute class weights to handle imbalanced datasets
-    labels = train_gen.classes
-    class_weights = compute_class_weight("balanced", classes=np.unique(labels), y=labels)
-    class_weight_dict = dict(enumerate(class_weights))
-    print(f"Class weights: {class_weight_dict}")
-
-    # ── Phase 1: Train top layers (base frozen) ───────────────────────────
-    print("\n📌 Phase 1: Training top layers with frozen MobileNetV2 base...")
-    model.compile(
-        optimizer=Adam(learning_rate=LEARNING_RATE),
-        loss="binary_crossentropy",
-        metrics=["accuracy"],
+    print(
+        "MedSecure AI"
     )
-    history1 = model.fit(
+
+    print(
+        "Counterfeit vs Genuine Medicine Training"
+    )
+
+    print("=" * 60)
+
+
+    # --------------------------------------------------------
+    # CHECK DATASET
+    # --------------------------------------------------------
+
+    if not check_dataset():
+
+        print(
+            "\n❌ Dataset structure is incorrect."
+        )
+
+        return
+
+
+    # --------------------------------------------------------
+    # BUILD GENERATORS
+    # --------------------------------------------------------
+
+    (
         train_gen,
-        validation_data=val_gen,
-        epochs=EPOCHS_FROZEN,
-        callbacks=get_callbacks("phase1"),
-        class_weight=class_weight_dict,
-    )
-    plot_history(history1, "phase1")
+        val_gen,
+        test_gen
+    ) = build_data_generators()
 
-    # ── Phase 2: Fine-tune — unfreeze last layers of base ─────────────────
-    print(f"\n📌 Phase 2: Fine-tuning from layer {FINE_TUNE_AT} onward...")
+
+    # --------------------------------------------------------
+    # CLASS WEIGHTS
+    # --------------------------------------------------------
+
+    labels = train_gen.classes
+
+    classes = np.unique(
+        labels
+    )
+
+
+    class_weights = compute_class_weight(
+
+        class_weight="balanced",
+
+        classes=classes,
+
+        y=labels
+    )
+
+
+    class_weight_dict = dict(
+
+        zip(
+            classes,
+            class_weights
+        )
+    )
+
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "CLASS WEIGHTS"
+    )
+
+    print("=" * 60)
+
+    print(
+        class_weight_dict
+    )
+
+
+    # --------------------------------------------------------
+    # BUILD MODEL
+    # --------------------------------------------------------
+
+    (
+        model,
+        base_model
+    ) = build_model()
+
+
+    # ========================================================
+    # PHASE 1
+    # ========================================================
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "PHASE 1 - TRAINING CLASSIFIER"
+    )
+
+    print("=" * 60)
+
+
+    model.compile(
+
+        optimizer=Adam(
+
+            learning_rate=LEARNING_RATE
+        ),
+
+        loss="binary_crossentropy",
+
+        metrics=[
+            "accuracy"
+        ]
+    )
+
+
+    history1 = model.fit(
+
+        train_gen,
+
+        validation_data=val_gen,
+
+        epochs=EPOCHS_FROZEN,
+
+        callbacks=get_callbacks(
+            "phase1"
+        ),
+
+        class_weight=class_weight_dict
+    )
+
+
+    plot_history(
+
+        history1,
+
+        "phase1"
+    )
+
+
+    # ========================================================
+    # PHASE 2 - FINE TUNING
+    # ========================================================
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "PHASE 2 - FINE TUNING MOBILENETV2"
+    )
+
+    print("=" * 60)
+
+
     base_model.trainable = True
-    for layer in base_model.layers[:FINE_TUNE_AT]:
+
+
+    # --------------------------------------------------------
+    # Freeze first layers
+    # --------------------------------------------------------
+
+    for layer in base_model.layers[
+        :FINE_TUNE_AT
+    ]:
+
         layer.trainable = False
 
+
+    # --------------------------------------------------------
+    # Freeze BatchNormalization
+    # --------------------------------------------------------
+
+    for layer in base_model.layers:
+
+        if isinstance(
+
+            layer,
+
+            BatchNormalization
+        ):
+
+            layer.trainable = False
+
+
+    # --------------------------------------------------------
+    # Recompile model
+    # --------------------------------------------------------
+
     model.compile(
-        optimizer=Adam(learning_rate=LEARNING_RATE / 10),  # Lower LR for fine-tune
+
+        optimizer=Adam(
+
+            learning_rate=1e-5
+        ),
+
         loss="binary_crossentropy",
-        metrics=["accuracy"],
+
+        metrics=[
+            "accuracy"
+        ]
     )
+
+
     history2 = model.fit(
+
         train_gen,
+
         validation_data=val_gen,
+
         epochs=EPOCHS_FINE,
-        callbacks=get_callbacks("phase2"),
-        class_weight=class_weight_dict,
+
+        callbacks=get_callbacks(
+            "phase2"
+        ),
+
+        class_weight=class_weight_dict
     )
-    plot_history(history2, "phase2")
 
-    # ── Save final model ──────────────────────────────────────────────────
-    model.save(MODEL_PATH)
-    print(f"\n✅ Model saved to: {MODEL_PATH}")
 
-    # Save class indices for inference
-    import json
-    with open(os.path.join(MODEL_DIR, "class_indices.json"), "w") as f:
-        json.dump(train_gen.class_indices, f)
-    print(f"✅ Class indices saved to: {MODEL_DIR}/class_indices.json")
+    plot_history(
 
+        history2,
+
+        "phase2"
+    )
+
+
+    # ========================================================
+    # FINAL TEST
+    # ========================================================
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "FINAL TEST EVALUATION"
+    )
+
+    print("=" * 60)
+
+
+    # --------------------------------------------------------
+    # Load best model
+    # --------------------------------------------------------
+
+    if os.path.exists(
+        MODEL_PATH
+    ):
+
+        print(
+            "\nLoading best saved model..."
+        )
+
+
+        model = tf.keras.models.load_model(
+            MODEL_PATH
+        )
+
+
+    # --------------------------------------------------------
+    # Evaluate
+    # --------------------------------------------------------
+
+    test_loss, test_accuracy = model.evaluate(
+
+        test_gen,
+
+        verbose=1
+    )
+
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        f"Test Accuracy: "
+        f"{test_accuracy * 100:.2f}%"
+    )
+
+    print(
+        f"Test Loss: "
+        f"{test_loss:.4f}"
+    )
+
+    print("=" * 60)
+
+
+    # ========================================================
+    # SAVE MODEL
+    # ========================================================
+
+    model.save(
+        MODEL_PATH
+    )
+
+
+    print(
+        f"\n✅ Model saved:"
+    )
+
+    print(
+        MODEL_PATH
+    )
+
+
+    # ========================================================
+    # SAVE CLASS INDICES
+    # ========================================================
+
+    os.makedirs(
+        MODEL_DIR,
+        exist_ok=True
+    )
+
+
+    with open(
+
+        CLASS_INDEX_PATH,
+
+        "w"
+    ) as f:
+
+        json.dump(
+
+            train_gen.class_indices,
+
+            f,
+
+            indent=4
+        )
+
+
+    print(
+        "\n✅ Class mapping saved:"
+    )
+
+    print(
+        CLASS_INDEX_PATH
+    )
+
+
+    # ========================================================
+    # FINAL SUMMARY
+    # ========================================================
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "TRAINING COMPLETED SUCCESSFULLY"
+    )
+
+    print("=" * 60)
+
+    print(
+        f"Final Test Accuracy: "
+        f"{test_accuracy * 100:.2f}%"
+    )
+
+    print(
+        "\nClass Mapping:"
+    )
+
+    print(
+        train_gen.class_indices
+    )
+
+    print("=" * 60)
+
+
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
+
     train()

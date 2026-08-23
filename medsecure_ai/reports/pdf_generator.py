@@ -212,6 +212,52 @@ def generate_pdf_report(data: dict, image_path: str | None = None) -> str | None
         rec = data.get("recommendation", "N/A")
         content.append(Paragraph(rec, body_style))
 
+        # ── Safety Guidance ───────────────────────────────────────────────
+        safety = data.get("safety_guidance", {})
+        if safety and not safety.get("is_safe", True):
+            content.append(Spacer(1, 0.3 * cm))
+            content.append(Paragraph("Safety Guidance", section_style))
+            content.append(Paragraph(f"<b>{safety.get('title', '')}</b>", body_style))
+            for action in safety.get("actions", []):
+                content.append(Paragraph(f"• {action}", body_style))
+
+        # ── AI Explainability ─────────────────────────────────────────────
+        explanation = data.get("explanation", {})
+        if explanation and explanation.get("reasons"):
+            content.append(Spacer(1, 0.3 * cm))
+            content.append(Paragraph("Reason for Prediction", section_style))
+            for reason in explanation["reasons"]:
+                icon = "✗" if reason.get("flagged") else "✓"
+                content.append(Paragraph(f"{icon} {reason.get('text', '')}", body_style))
+            content.append(Paragraph(
+                f"<b>Overall Confidence: {explanation.get('overall_confidence', 0)}%</b>",
+                body_style,
+            ))
+
+        # ── Nearby Pharmacies ─────────────────────────────────────────────
+        pharmacies = data.get("nearby_pharmacies", [])
+        if pharmacies:
+            content.append(Spacer(1, 0.3 * cm))
+            content.append(Paragraph("Nearby Licensed Pharmacies", section_style))
+            pharm_data = [["Name", "Distance", "Rating", "Address"]]
+            for p in pharmacies[:10]:
+                pharm_data.append([
+                    p.get("name", "N/A"),
+                    f"{p.get('distance_km', '?')} km",
+                    str(p.get("rating", "N/A")),
+                    p.get("address", "N/A"),
+                ])
+            pharm_table = Table(pharm_data, colWidths=["30%", "12%", "12%", "46%"])
+            pharm_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
+                ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+                ("FONTNAME",   (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID",       (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ("PADDING",    (0, 0), (-1, -1), 6),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GRAY]),
+            ]))
+            content.append(pharm_table)
+
         # ── Language ─────────────────────────────────────────────────────
         lang = data.get("language", "en")
         lang_display = "English" if lang == "en" else "Kannada (ಕನ್ನಡ)"

@@ -16,6 +16,8 @@ STATIC_KN = {
     # Predictions
     "Genuine":      "ಅಸಲಿ",
     "Counterfeit":  "ನಕಲಿ",
+    "Suspicious":   "ಸಂಶಯಾಸ್ಪದ",
+    "Expired":      "ಅವಧಿ ಮೀರಿದ",
     "Unknown":      "ಅಜ್ಞಾತ",
     # Risk levels
     "Low":          "ಕಡಿಮೆ",
@@ -101,6 +103,29 @@ def translate_results(results: dict, language: str) -> dict:
         if isinstance(value, str) and value:
             translated[field] = translate_to_kannada(value)
 
+    # Translate safety guidance
+    safety = results.get("safety_guidance", {})
+    if safety:
+        translated_safety = safety.copy()
+        for key in ("title", "message"):
+            if safety.get(key):
+                translated_safety[key] = translate_to_kannada(safety[key])
+        if safety.get("actions"):
+            translated_safety["actions"] = [
+                translate_to_kannada(a) for a in safety["actions"]
+            ]
+        translated["safety_guidance"] = translated_safety
+
+    # Translate explanation reasons
+    explanation = results.get("explanation", {})
+    if explanation and explanation.get("reasons"):
+        translated_exp = explanation.copy()
+        translated_exp["reasons"] = [
+            {**r, "text": translate_to_kannada(r.get("text", ""))}
+            for r in explanation["reasons"]
+        ]
+        translated["explanation"] = translated_exp
+
     return translated
 
 
@@ -124,6 +149,12 @@ def get_ui_labels(language: str) -> dict:
         "recommendation":     "Recommendation",
         "prediction":         "Prediction",
         "expiry_status":      "Expiry Status",
+        "safety_guidance":    "Safety Guidance",
+        "nearby_pharmacies":  "Nearby Pharmacies",
+        "reason_prediction":  "Reason for Prediction",
+        "overall_confidence": "Overall Confidence",
+        "download_pdf":       "Download PDF Report",
+        "analyze_another":    "Analyze Another",
     }
 
     if language != "kn":

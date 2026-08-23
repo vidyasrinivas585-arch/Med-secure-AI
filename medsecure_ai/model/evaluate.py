@@ -1,10 +1,25 @@
 """
 model/evaluate.py
-Evaluates the trained MobileNetV2 model.
-Generates accuracy, precision, recall, F1, confusion matrix, and ROC curve.
+MedSecure AI - Model Evaluation
+
+Evaluates the trained MobileNetV2 model using the
+separate TEST dataset.
+
+Dataset structure:
+
+dataset/
+├── train/
+│   ├── counterfeit/
+│   └── genuine/
+├── val/
+│   ├── counterfeit/
+│   └── genuine/
+└── test/
+    ├── counterfeit/
+    └── genuine/
 
 Usage:
-    python model/evaluate.py
+python model/evaluate.py
 """
 
 import os
@@ -13,120 +28,653 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc,
-    classification_report,
+from tensorflow.keras.models import load_model
+
+from tensorflow.keras.preprocessing.image import (
+    ImageDataGenerator
 )
 
-# ── Config ────────────────────────────────────────────────────────────────────
-DATASET_DIR = "dataset"
-MODEL_PATH  = "trained_model/medicine_classifier.h5"
-IMG_SIZE    = (224, 224)
-BATCH_SIZE  = 32
-REPORT_DIR  = "trained_model/evaluation"
+from tensorflow.keras.applications.mobilenet_v2 import (
+    preprocess_input
+)
 
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+    roc_curve,
+    auc,
+    classification_report
+)
+
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+DATASET_DIR = "dataset"
+
+TEST_DIR = os.path.join(
+    DATASET_DIR,
+    "test"
+)
+
+MODEL_PATH = os.path.join(
+    "trained_model",
+    "medicine_classifier.keras"
+)
+
+CLASS_INDEX_PATH = os.path.join(
+    "trained_model",
+    "class_indices.json"
+)
+
+IMG_SIZE = (224, 224)
+
+BATCH_SIZE = 32
+
+REPORT_DIR = os.path.join(
+    "trained_model",
+    "evaluation"
+)
+
+
+# ============================================================
+# EVALUATION
+# ============================================================
 
 def evaluate():
-    os.makedirs(REPORT_DIR, exist_ok=True)
 
-    # ── Load model ──────────────────────────────────────────────────────────
-    print(f"Loading model from {MODEL_PATH} ...")
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "MedSecure AI - Model Evaluation"
+    )
+
+    print("=" * 60)
+
+
+    # --------------------------------------------------------
+    # Create report directory
+    # --------------------------------------------------------
+
+    os.makedirs(
+        REPORT_DIR,
+        exist_ok=True
+    )
+
+
+    # --------------------------------------------------------
+    # Check model
+    # --------------------------------------------------------
+
+    print(
+        f"\nLoading model from: {MODEL_PATH}"
+    )
+
+
     if not os.path.exists(MODEL_PATH):
-        print("❌ Trained model not found. Run model/train.py first.")
-        return
-    model = load_model(MODEL_PATH)
-    print("✅ Model loaded.")
 
-    # ── Data generator (no augmentation) ───────────────────────────────────
+        print(
+            "❌ Trained model not found."
+        )
+
+        print(
+            "Run: python model/train.py"
+        )
+
+        return
+
+
+    # --------------------------------------------------------
+    # Load model
+    # --------------------------------------------------------
+
+    model = load_model(
+        MODEL_PATH
+    )
+
+
+    print(
+        "✅ Model loaded."
+    )
+
+
+    # --------------------------------------------------------
+    # Check TEST directory
+    # --------------------------------------------------------
+
+    if not os.path.exists(TEST_DIR):
+
+        print(
+            f"❌ Test directory not found: {TEST_DIR}"
+        )
+
+        return
+
+
+    # --------------------------------------------------------
+    # Test data generator
+    # --------------------------------------------------------
+
     datagen = ImageDataGenerator(
-        preprocessing_function=preprocess_input,
-        validation_split=0.2,
+
+        preprocessing_function=preprocess_input
     )
+
+
     test_gen = datagen.flow_from_directory(
-        DATASET_DIR,
+
+        TEST_DIR,
+
         target_size=IMG_SIZE,
+
         batch_size=BATCH_SIZE,
+
         class_mode="binary",
-        subset="validation",
-        shuffle=False,
+
+        shuffle=False
     )
+
+
+    # --------------------------------------------------------
+    # Class indices
+    # --------------------------------------------------------
 
     class_indices = test_gen.class_indices
-    print(f"Class indices: {class_indices}")
 
-    # ── Predictions ─────────────────────────────────────────────────────────
-    print("Running predictions ...")
-    y_prob = model.predict(test_gen, verbose=1).flatten()
-    y_pred = (y_prob >= 0.5).astype(int)
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "CLASS INDICES"
+    )
+
+    print("=" * 60)
+
+    print(
+        class_indices
+    )
+
+
+    expected_mapping = {
+        "counterfeit": 0,
+        "genuine": 1
+    }
+
+
+    if class_indices != expected_mapping:
+
+        print(
+            "\n⚠️ WARNING:"
+        )
+
+        print(
+            "Unexpected class mapping detected."
+        )
+
+    else:
+
+        print(
+            "✅ Correct mapping:"
+        )
+
+        print(
+            "counterfeit = 0"
+        )
+
+        print(
+            "genuine = 1"
+        )
+
+
+    # --------------------------------------------------------
+    # Predictions
+    # --------------------------------------------------------
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "RUNNING TEST PREDICTIONS"
+    )
+
+    print("=" * 60)
+
+
+    y_prob = model.predict(
+
+        test_gen,
+
+        verbose=1
+    ).flatten()
+
+
+    # --------------------------------------------------------
+    # Convert probability to class
+    # --------------------------------------------------------
+
+    y_pred = (
+
+        y_prob >= 0.5
+
+    ).astype(int)
+
+
     y_true = test_gen.classes
 
-    # Determine which index is 'Genuine' and which is 'Counterfeit'
-    labels = ["Genuine", "Counterfeit"]
-    if class_indices.get("genuine", 0) == 1:
-        labels = ["Counterfeit", "Genuine"]
 
-    # ── Classification Report ───────────────────────────────────────────────
-    print("\n" + "=" * 50)
-    print("CLASSIFICATION REPORT")
-    print("=" * 50)
-    report = classification_report(y_true, y_pred, target_names=labels)
-    print(report)
+    # --------------------------------------------------------
+    # Labels
+    # --------------------------------------------------------
 
-    # Save report as text
-    with open(f"{REPORT_DIR}/classification_report.txt", "w") as f:
+    labels = [
+        "Counterfeit",
+        "Genuine"
+    ]
+
+
+    # ========================================================
+    # CLASSIFICATION REPORT
+    # ========================================================
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "CLASSIFICATION REPORT"
+    )
+
+    print("=" * 60)
+
+
+    report = classification_report(
+
+        y_true,
+
+        y_pred,
+
+        target_names=labels,
+
+        zero_division=0
+    )
+
+
+    print(
+        report
+    )
+
+
+    # Save report
+
+    report_path = os.path.join(
+
+        REPORT_DIR,
+
+        "classification_report.txt"
+    )
+
+
+    with open(
+
+        report_path,
+
+        "w"
+    ) as f:
+
         f.write(report)
 
-    # ── Scalar metrics ──────────────────────────────────────────────────────
-    acc  = accuracy_score(y_true, y_pred)
-    prec = precision_score(y_true, y_pred)
-    rec  = recall_score(y_true, y_pred)
-    f1   = f1_score(y_true, y_pred)
 
-    metrics = {"accuracy": acc, "precision": prec, "recall": rec, "f1_score": f1}
-    print(f"\nAccuracy:  {acc:.4f}")
-    print(f"Precision: {prec:.4f}")
-    print(f"Recall:    {rec:.4f}")
-    print(f"F1 Score:  {f1:.4f}")
+    # ========================================================
+    # METRICS
+    # ========================================================
 
-    with open(f"{REPORT_DIR}/metrics.json", "w") as f:
-        json.dump(metrics, f, indent=2)
+    acc = accuracy_score(
 
-    # ── Confusion Matrix ────────────────────────────────────────────────────
-    cm = confusion_matrix(y_true, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
-    fig, ax = plt.subplots(figsize=(6, 5))
-    disp.plot(ax=ax, colorbar=False, cmap="Blues")
-    ax.set_title("Confusion Matrix – Medicine Authenticity Classifier")
+        y_true,
+
+        y_pred
+    )
+
+
+    precision = precision_score(
+
+        y_true,
+
+        y_pred,
+
+        zero_division=0
+    )
+
+
+    recall = recall_score(
+
+        y_true,
+
+        y_pred,
+
+        zero_division=0
+    )
+
+
+    f1 = f1_score(
+
+        y_true,
+
+        y_pred,
+
+        zero_division=0
+    )
+
+
+    metrics = {
+
+        "accuracy": float(acc),
+
+        "precision": float(precision),
+
+        "recall": float(recall),
+
+        "f1_score": float(f1)
+
+    }
+
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "FINAL METRICS"
+    )
+
+    print("=" * 60)
+
+
+    print(
+        f"Accuracy:  {acc:.4f}"
+    )
+
+    print(
+        f"Precision: {precision:.4f}"
+    )
+
+    print(
+        f"Recall:    {recall:.4f}"
+    )
+
+    print(
+        f"F1 Score:  {f1:.4f}"
+    )
+
+
+    # Save metrics
+
+    metrics_path = os.path.join(
+
+        REPORT_DIR,
+
+        "metrics.json"
+    )
+
+
+    with open(
+
+        metrics_path,
+
+        "w"
+    ) as f:
+
+        json.dump(
+
+            metrics,
+
+            f,
+
+            indent=4
+        )
+
+
+    # ========================================================
+    # CONFUSION MATRIX
+    # ========================================================
+
+    cm = confusion_matrix(
+
+        y_true,
+
+        y_pred
+    )
+
+
+    disp = ConfusionMatrixDisplay(
+
+        confusion_matrix=cm,
+
+        display_labels=labels
+    )
+
+
+    fig, ax = plt.subplots(
+
+        figsize=(6, 5)
+    )
+
+
+    disp.plot(
+
+        ax=ax,
+
+        colorbar=False,
+
+        cmap="Blues"
+    )
+
+
+    ax.set_title(
+
+        "Confusion Matrix - Medicine Authenticity Classifier"
+    )
+
+
     plt.tight_layout()
-    plt.savefig(f"{REPORT_DIR}/confusion_matrix.png", dpi=150)
+
+
+    confusion_path = os.path.join(
+
+        REPORT_DIR,
+
+        "confusion_matrix.png"
+    )
+
+
+    plt.savefig(
+
+        confusion_path,
+
+        dpi=150
+    )
+
+
     plt.close()
-    print(f"\n✅ Confusion matrix saved.")
 
-    # ── ROC Curve ───────────────────────────────────────────────────────────
-    fpr, tpr, _ = roc_curve(y_true, y_prob)
-    roc_auc = auc(fpr, tpr)
 
-    plt.figure(figsize=(6, 5))
-    plt.plot(fpr, tpr, color="royalblue", lw=2, label=f"ROC curve (AUC = {roc_auc:.3f})")
-    plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
-    plt.xlim([0, 1])
-    plt.ylim([0, 1.02])
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title("ROC Curve – Medicine Authenticity Classifier")
-    plt.legend(loc="lower right")
+    print(
+        "\n✅ Confusion matrix saved."
+    )
+
+
+    # ========================================================
+    # ROC CURVE
+    # ========================================================
+
+    fpr, tpr, _ = roc_curve(
+
+        y_true,
+
+        y_prob
+    )
+
+
+    roc_auc = auc(
+
+        fpr,
+
+        tpr
+    )
+
+
+    plt.figure(
+
+        figsize=(6, 5)
+    )
+
+
+    plt.plot(
+
+        fpr,
+
+        tpr,
+
+        color="royalblue",
+
+        lw=2,
+
+        label=(
+            f"ROC curve "
+            f"(AUC = {roc_auc:.3f})"
+        )
+    )
+
+
+    plt.plot(
+
+        [0, 1],
+
+        [0, 1],
+
+        color="gray",
+
+        linestyle="--"
+    )
+
+
+    plt.xlim(
+
+        [0, 1]
+    )
+
+
+    plt.ylim(
+
+        [0, 1.02]
+    )
+
+
+    plt.xlabel(
+        "False Positive Rate"
+    )
+
+
+    plt.ylabel(
+        "True Positive Rate"
+    )
+
+
+    plt.title(
+
+        "ROC Curve - Medicine Authenticity Classifier"
+    )
+
+
+    plt.legend(
+
+        loc="lower right"
+    )
+
+
     plt.tight_layout()
-    plt.savefig(f"{REPORT_DIR}/roc_curve.png", dpi=150)
+
+
+    roc_path = os.path.join(
+
+        REPORT_DIR,
+
+        "roc_curve.png"
+    )
+
+
+    plt.savefig(
+
+        roc_path,
+
+        dpi=150
+    )
+
+
     plt.close()
-    print(f"✅ ROC curve saved. AUC = {roc_auc:.4f}")
 
-    print(f"\nAll evaluation artifacts saved to: {REPORT_DIR}/")
 
+    print(
+        f"✅ ROC curve saved. "
+        f"AUC = {roc_auc:.4f}"
+    )
+
+
+    # ========================================================
+    # FINAL OUTPUT
+    # ========================================================
+
+    print("\n")
+    print("=" * 60)
+
+    print(
+        "EVALUATION COMPLETED"
+    )
+
+    print("=" * 60)
+
+
+    print(
+        f"Accuracy  : {acc * 100:.2f}%"
+    )
+
+    print(
+        f"Precision : {precision * 100:.2f}%"
+    )
+
+    print(
+        f"Recall    : {recall * 100:.2f}%"
+    )
+
+    print(
+        f"F1 Score  : {f1 * 100:.2f}%"
+    )
+
+    print(
+        f"ROC AUC   : {roc_auc:.4f}"
+    )
+
+
+    print("\nEvaluation files saved to:")
+
+    print(
+        REPORT_DIR
+    )
+
+
+    print("=" * 60)
+
+
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
+
     evaluate()

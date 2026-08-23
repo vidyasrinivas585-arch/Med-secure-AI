@@ -1,0 +1,854 @@
+{% extends "base.html" %}
+{% block title %}MedSecure AI — Live Camera Scanner{% endblock %}
+
+{% block head %}
+<!-- jsQR — pure JavaScript QR decoder, no install needed -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<!-- ZXing — for barcode support -->
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+
+<style>
+  /* ── Camera container ─────────────────────────────────────── */
+  .camera-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  }
+
+  #videoFeed {
+    width: 100%;
+    display: block;
+    border-radius: 1rem;
+  }
+
+  /* ── Scanning overlay ─────────────────────────────────────── */
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .scan-frame {
+    width: 220px;
+    height: 220px;
+    position: relative;
+  }
+
+  /* Corner brackets */
+  .scan-frame::before,
+  .scan-frame::after,
+  .corner-br::before,
+  .corner-br::after {
+    content: '';
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-color: #38BDF8;
+    border-style: solid;
+  }
+  .scan-frame::before  { top:0;    left:0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .scan-frame::after   { top:0;    right:0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .corner-br::before   { bottom:0; left:0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .corner-br::after    { bottom:0; right:0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  /* Animated scan line */
+  .scan-line {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #38BDF8, transparent);
+    animation: scanMove 2s ease-in-out infinite;
+    top: 0;
+  }
+  @keyframes scanMove {
+    0%   { top: 8px;   opacity: 1; }
+    50%  { top: 204px; opacity: 1; }
+    100% { top: 8px;   opacity: 1; }
+  }
+
+  /* ── Status badge ─────────────────────────────────────────── */
+  .status-badge {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.72);
+    color: #fff;
+    padding: 6px 18px;
+    border-radius: 50rem;
+    font-size: .82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    backdrop-filter: blur(6px);
+    letter-spacing: .03em;
+  }
+  .status-badge.success { background: rgba(15,157,88,0.85); }
+  .status-badge.error   { background: rgba(217,48,37,0.85); }
+
+  /* ── Result card ──────────────────────────────────────────── */
+  .result-card {
+    border-left: 4px solid #1A73E8;
+    transition: border-color .3s;
+  }
+  .result-card.success { border-left-color: #0F9D58; }
+  .result-card.danger  { border-left-color: #D93025; }
+
+  /* ── Field rows ───────────────────────────────────────────── */
+  .field-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .45rem 0;
+    border-bottom: 1px solid #F1F5F9;
+    font-size: .9rem;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-label { color: #6B7280; font-weight: 500; min-width: 140px; }
+  .field-value { font-weight: 600; color: #1A202C; text-align: right; }
+
+  /* ── Pulse ring on detection ──────────────────────────────── */
+  @keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0   rgba(15,157,88,.6); }
+    70%  { box-shadow: 0 0 0 16px rgba(15,157,88,0);  }
+    100% { box-shadow: 0 0 0 0   rgba(15,157,88,0);  }
+  }
+  .detected { animation: pulseRing .6s ease-out; }
+
+  /* ── Camera controls ──────────────────────────────────────── */
+  .cam-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: transform .15s;
+  }
+  .cam-btn:hover { transform: scale(1.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-4">
+  <div class="container">
+
+    <!-- Page header -->
+    <div class="text-center mb-4">
+      <span class="badge bg-primary-soft text-primary px-3 py-2 mb-2 fs-7">
+        <i class="bi bi-camera-video me-1"></i>Live Camera Scanner
+      </span>
+      <h2 class="fw-bold">Scan QR Code or Barcode</h2>
+      <p class="text-muted">Point your camera at a medicine QR code or barcode for instant detection.</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+
+      <!-- ── Camera panel ──────────────────────────────────────── -->
+      <div class="col-lg-6">
+
+        <!-- Camera view -->
+        <div class="camera-wrapper mb-3" id="cameraWrapper">
+          <video id="videoFeed" autoplay muted playsinline></video>
+          <canvas id="hiddenCanvas" style="display:none"></canvas>
+
+          <!-- Scanning overlay -->
+          <div class="scan-overlay" id="scanOverlay">
+            <div class="scan-frame">
+              <div class="corner-br"></div>
+              <div class="scan-line" id="scanLine"></div>
+            </div>
+          </div>
+
+          <!-- Status badge -->
+          <div class="status-badge" id="statusBadge">
+            <i class="bi bi-camera me-1"></i>Starting camera...
+          </div>
+        </div>
+
+        <!-- Camera controls -->
+        <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
+          <!-- Start/Stop -->
+          <button class="cam-btn bg-primary text-white shadow" id="startBtn"
+                  onclick="startCamera()" title="Start Camera">
+            <i class="bi bi-play-fill"></i>
+          </button>
+          <!-- Capture snapshot -->
+          <button class="cam-btn bg-success text-white shadow" id="captureBtn"
+                  onclick="captureAndAnalyze()" title="Capture & Analyze" disabled>
+            <i class="bi bi-camera"></i>
+          </button>
+          <!-- Flip camera -->
+          <button class="cam-btn bg-secondary text-white shadow" id="flipBtn"
+                  onclick="flipCamera()" title="Flip Camera" disabled>
+            <i class="bi bi-arrow-repeat"></i>
+          </button>
+          <!-- Stop -->
+          <button class="cam-btn bg-danger text-white shadow" id="stopBtn"
+                  onclick="stopCamera()" title="Stop Camera" disabled>
+            <i class="bi bi-stop-fill"></i>
+          </button>
+          <!-- Torch toggle -->
+          <button class="cam-btn bg-warning text-dark shadow" id="torchBtn"
+                  onclick="toggleTorch()" title="Toggle Flash" disabled>
+            <i class="bi bi-lightning"></i>
+          </button>
+        </div>
+
+        <!-- Mode selector -->
+        <div class="d-flex justify-content-center gap-2 mb-3">
+          <button class="btn btn-sm btn-primary active" id="modeAuto"
+                  onclick="setMode('auto')">
+            <i class="bi bi-magic me-1"></i>Auto Scan
+          </button>
+          <button class="btn btn-sm btn-outline-primary" id="modeManual"
+                  onclick="setMode('manual')">
+            <i class="bi bi-hand-index me-1"></i>Manual Capture
+          </button>
+        </div>
+
+        <!-- Scan stats -->
+        <div class="row g-2 text-center">
+          <div class="col-4">
+            <div class="p-2 bg-light rounded-3">
+              <div class="fw-bold text-primary" id="framesScanned">0</div>
+              <div style="font-size:.72rem" class="text-muted">Frames Scanned</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-light rounded-3">
+              <div class="fw-bold text-success" id="qrDetected">0</div>
+              <div style="font-size:.72rem" class="text-muted">QR Found</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-light rounded-3">
+              <div class="fw-bold text-warning" id="scanFPS">0</div>
+              <div style="font-size:.72rem" class="text-muted">FPS</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Results panel ─────────────────────────────────────── -->
+      <div class="col-lg-6">
+
+        <!-- Waiting state -->
+        <div id="waitingState" class="text-center py-5">
+          <div class="mb-3" style="font-size:4rem; opacity:.2">📷</div>
+          <p class="text-muted">Start the camera and point it at a QR code or barcode.</p>
+          <button class="btn btn-primary px-4" onclick="startCamera()">
+            <i class="bi bi-camera-video me-2"></i>Start Camera
+          </button>
+        </div>
+
+        <!-- Scanning state -->
+        <div id="scanningState" class="text-center py-5 d-none">
+          <div class="spinner-border text-primary mb-3"></div>
+          <p class="text-muted fw-semibold">Scanning for QR code...</p>
+          <p class="text-muted small">Hold the QR code steady inside the frame</p>
+        </div>
+
+        <!-- Result state -->
+        <div id="resultState" class="d-none">
+
+          <!-- Detection banner -->
+          <div class="alert border-0 rounded-4 mb-3 p-3" id="detectionBanner">
+            <div class="d-flex align-items-center gap-3">
+              <span style="font-size:2rem" id="bannerIcon">✅</span>
+              <div>
+                <div class="fw-bold" id="bannerTitle">QR Code Detected!</div>
+                <div class="small opacity-75" id="bannerSub">Tap Analyze to verify medicine</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw QR data -->
+          <div class="card border-0 shadow-sm rounded-4 mb-3">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold small">
+                  <i class="bi bi-code-square text-primary me-1"></i>Raw QR Data
+                </span>
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                        onclick="copyRawData()" style="font-size:.75rem">
+                  <i class="bi bi-clipboard me-1"></i>Copy
+                </button>
+              </div>
+              <pre id="rawDataBox" class="bg-dark text-success rounded-3 p-2 mb-0 small"
+                   style="max-height:100px;overflow:auto;font-size:.8rem"></pre>
+            </div>
+          </div>
+
+          <!-- Parsed fields -->
+          <div class="card border-0 shadow-sm rounded-4 mb-3 result-card" id="parsedCard">
+            <div class="card-header bg-transparent border-0 pt-3 pb-0 px-4">
+              <h6 class="fw-bold mb-0">
+                <i class="bi bi-capsule text-primary me-2"></i>Extracted Medicine Info
+              </h6>
+            </div>
+            <div class="card-body px-4 pb-3" id="parsedFields">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+
+          <!-- Expiry status -->
+          <div class="card border-0 shadow-sm rounded-4 mb-3" id="expiryCard">
+            <div class="card-body p-3 text-center" id="expiryContent">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary btn-lg rounded-3" onclick="sendToFullAnalysis()">
+              <i class="bi bi-shield-check me-2"></i>Run Full AI Analysis
+            </button>
+            <button class="btn btn-outline-secondary rounded-3" onclick="resetScanner()">
+              <i class="bi bi-arrow-clockwise me-2"></i>Scan Another
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Error state -->
+        <div id="errorState" class="d-none">
+          <div class="alert alert-danger rounded-4 border-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <span id="errorMsg">Camera access denied.</span>
+          </div>
+          <div class="card border-0 shadow-sm rounded-4 p-3">
+            <h6 class="fw-bold mb-2">Troubleshooting</h6>
+            <ul class="text-muted small mb-0 ps-3">
+              <li>Allow camera access in browser settings</li>
+              <li>Use Chrome or Edge for best compatibility</li>
+              <li>Make sure no other app is using the camera</li>
+              <li>Try <a href="{{ url_for('scan_qr_page') }}">Upload Image</a> instead</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Upload fallback -->
+    <div class="text-center mt-4 pt-3 border-top">
+      <p class="text-muted small mb-2">Camera not available?</p>
+      <a href="{{ url_for('scan_qr_page') }}" class="btn btn-outline-primary btn-sm me-2">
+        <i class="bi bi-upload me-1"></i>Upload Image Instead
+      </a>
+      <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-shield-check me-1"></i>Full AI Analysis
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- Hidden form to send captured image to backend -->
+<form id="captureForm" action="{{ url_for('analyze_qr') }}"
+      method="POST" enctype="multipart/form-data" style="display:none">
+  <input type="hidden" name="language" id="formLanguage" value="en">
+  <input type="file" name="image" id="formImageInput">
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let stream         = null;
+let scanTimer      = null;
+let frameCount     = 0;
+let detectedCount  = 0;
+let lastFPSTime    = Date.now();
+let framesSinceFPS = 0;
+let scanMode       = 'auto';   // 'auto' or 'manual'
+let lastDetected   = null;
+let facingMode     = 'environment';  // back camera default
+let torchOn        = false;
+let torchTrack     = null;
+let scanning       = false;
+
+const video   = document.getElementById('videoFeed');
+const canvas  = document.getElementById('hiddenCanvas');
+const ctx     = canvas.getContext('2d', { willReadFrequently: true });
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA CONTROL
+// ═══════════════════════════════════════════════════════════════
+async function startCamera() {
+  setStatus('Starting camera...', '');
+  showState('scanning');
+
+  const constraints = {
+    video: {
+      facingMode: facingMode,
+      width:  { ideal: 1280 },
+      height: { ideal: 720  },
+    }
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await video.play();
+
+    // Store track for torch control
+    torchTrack = stream.getVideoTracks()[0];
+
+    // Enable buttons
+    document.getElementById('captureBtn').disabled = false;
+    document.getElementById('flipBtn').disabled    = false;
+    document.getElementById('stopBtn').disabled    = false;
+    document.getElementById('torchBtn').disabled   = false;
+    document.getElementById('startBtn').disabled   = true;
+
+    setStatus('Scanning...', '');
+    scanning = true;
+
+    if (scanMode === 'auto') {
+      startAutoScan();
+    }
+
+  } catch (err) {
+    console.error('Camera error:', err);
+    showState('error');
+    document.getElementById('errorMsg').textContent =
+      err.name === 'NotAllowedError'
+        ? 'Camera access denied. Please allow camera in browser settings.'
+        : `Camera error: ${err.message}`;
+  }
+}
+
+function stopCamera() {
+  scanning = false;
+  if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+  if (stream)    { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  video.srcObject = null;
+
+  document.getElementById('startBtn').disabled   = false;
+  document.getElementById('captureBtn').disabled = true;
+  document.getElementById('flipBtn').disabled    = true;
+  document.getElementById('stopBtn').disabled    = true;
+  document.getElementById('torchBtn').disabled   = true;
+
+  setStatus('Camera stopped', '');
+  if (!lastDetected) showState('waiting');
+}
+
+async function flipCamera() {
+  facingMode = facingMode === 'environment' ? 'user' : 'environment';
+  stopCamera();
+  await startCamera();
+}
+
+async function toggleTorch() {
+  if (!torchTrack) return;
+  try {
+    torchOn = !torchOn;
+    await torchTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+    document.getElementById('torchBtn').innerHTML =
+      torchOn ? '<i class="bi bi-lightning-fill"></i>'
+              : '<i class="bi bi-lightning"></i>';
+  } catch (e) {
+    showToast('Torch not supported on this device', 'warning');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCANNING
+// ═══════════════════════════════════════════════════════════════
+function startAutoScan() {
+  if (scanTimer) clearInterval(scanTimer);
+  scanTimer = setInterval(scanFrame, 150);  // ~6 FPS scan rate
+}
+
+function scanFrame() {
+  if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+  // Draw video frame to canvas
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  frameCount++;
+  framesSinceFPS++;
+  document.getElementById('framesScanned').textContent = frameCount;
+
+  // Update FPS every second
+  const now = Date.now();
+  if (now - lastFPSTime > 1000) {
+    document.getElementById('scanFPS').textContent = framesSinceFPS;
+    framesSinceFPS = 0;
+    lastFPSTime    = now;
+  }
+
+  // Get pixel data and run jsQR
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const qrCode    = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'dontInvert',
+  });
+
+  if (qrCode && qrCode.data) {
+    onQRDetected(qrCode.data, 'QR Code');
+  }
+}
+
+function captureAndAnalyze() {
+  // Manual capture — scan current frame once
+  if (!video.srcObject) return;
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const qrCode    = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'attemptBoth',
+  });
+
+  if (qrCode && qrCode.data) {
+    onQRDetected(qrCode.data, 'QR Code');
+  } else {
+    setStatus('No QR found — try again', 'error');
+    showToast('No QR code detected. Try better lighting or hold steady.', 'warning');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ON QR DETECTED
+// ═══════════════════════════════════════════════════════════════
+function onQRDetected(data, type) {
+  // Prevent duplicate detections
+  if (lastDetected === data) return;
+  lastDetected = data;
+
+  // Stop auto-scan to prevent repeat triggers
+  if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+
+  detectedCount++;
+  document.getElementById('qrDetected').textContent = detectedCount;
+  setStatus('QR Detected! ✓', 'success');
+
+  // Flash camera wrapper
+  const wrapper = document.getElementById('cameraWrapper');
+  wrapper.classList.add('detected');
+  setTimeout(() => wrapper.classList.remove('detected'), 600);
+
+  // Parse the QR data
+  const parsed = parseQRData(data);
+
+  // Show result
+  showState('result');
+  populateResult(data, parsed, type);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QR DATA PARSER (mirrors backend logic in JavaScript)
+// ═══════════════════════════════════════════════════════════════
+function parseQRData(raw) {
+  const result = { raw, format: 'Plain Text' };
+
+  // JSON format
+  if (raw.startsWith('{') || raw.startsWith('[')) {
+    try {
+      const data = JSON.parse(raw);
+      Object.assign(result, mapFields(data));
+      result.format = 'JSON';
+      return result;
+    } catch(e) {}
+  }
+
+  // URL format
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    result.url    = raw;
+    result.format = 'URL';
+    const params  = parseURLParams(raw);
+    Object.assign(result, mapFields(params));
+    return result;
+  }
+
+  // GS1 format
+  if (raw.includes('(') && raw.includes(')')) {
+    const gs1 = parseGS1(raw);
+    if (Object.keys(gs1).length > 0) {
+      Object.assign(result, gs1);
+      result.format = 'GS1';
+      return result;
+    }
+  }
+
+  // Pipe + colon key:value
+  if (raw.includes('|') && raw.includes(':')) {
+    const pairs = {};
+    raw.split('|').forEach(part => {
+      const [k, ...v] = part.split(':');
+      if (k && v.length) pairs[k.trim().toLowerCase()] = v.join(':').trim();
+    });
+    Object.assign(result, mapFields(pairs));
+    result.format = 'Key-Value';
+    return result;
+  }
+
+  // Pipe separated plain
+  if (raw.includes('|')) {
+    const parts  = raw.split('|').map(p => p.trim());
+    const fields = ['medicine_name','manufacturer','batch_number','expiry_date'];
+    parts.forEach((v, i) => { if (i < fields.length && v) result[fields[i]] = v; });
+    result.format = 'Pipe-Separated';
+    return result;
+  }
+
+  // Regex extraction from plain text
+  const batchM = raw.match(/(?:batch|lot|b\.?no)[:\s#]*([A-Z0-9\-]+)/i);
+  if (batchM) result.batch_number = batchM[1];
+  const expM   = raw.match(/(?:exp|expiry)[:\s]*(\d{2}[\/\-]\d{4}|\d{2}[\/\-]\d{2}[\/\-]\d{4})/i);
+  if (expM) result.expiry_date = expM[1];
+  const nameM  = raw.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?(?:\s\d+\s?mg)?)\b/);
+  if (nameM) result.medicine_name = nameM[1];
+
+  return result;
+}
+
+function mapFields(obj) {
+  const map = {
+    name:'medicine_name', medicine:'medicine_name', drug:'medicine_name',
+    product:'medicine_name', medicine_name:'medicine_name',
+    manufacturer:'manufacturer', mfr:'manufacturer', company:'manufacturer',
+    batch:'batch_number', batch_no:'batch_number', lot:'batch_number',
+    batchno:'batch_number',
+    exp:'expiry_date', expiry:'expiry_date', expiry_date:'expiry_date',
+    expdate:'expiry_date', best_before:'expiry_date',
+    mfg_date:'manufacturing_date', serial:'serial_number',
+    gtin:'gtin', dosage:'dosage', strength:'dosage',
+  };
+  const result = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    const std = map[k.toLowerCase().replace(/\s+/g,'_')] || k.toLowerCase();
+    result[std] = String(v);
+  });
+  return result;
+}
+
+function parseURLParams(url) {
+  const params = {};
+  if (!url.includes('?')) return params;
+  url.split('?')[1].split('&').forEach(pair => {
+    const [k, v] = pair.split('=');
+    if (k && v) params[k] = decodeURIComponent(v);
+  });
+  return params;
+}
+
+function parseGS1(raw) {
+  const result = {};
+  const aiMap  = { '01':'gtin','10':'batch_number','17':'expiry_date',
+                   '21':'serial_number','11':'manufacturing_date' };
+  const matches = [...raw.matchAll(/\((\d{2,4})\)([^(]+)/g)];
+  matches.forEach(([,ai, value]) => {
+    const field = aiMap[ai];
+    if (!field) return;
+    value = value.trim();
+    if ((field === 'expiry_date' || field === 'manufacturing_date') && value.length === 6) {
+      value = `${value.slice(2,4)}/20${value.slice(0,2)}`;
+    }
+    result[field] = value;
+  });
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHECK EXPIRY
+// ═══════════════════════════════════════════════════════════════
+function checkExpiry(expStr) {
+  if (!expStr) return { status: 'Unknown', days: 0 };
+  const formats = [
+    { re: /^(\d{2})\/(\d{4})$/,    parse: (m) => new Date(m[2], m[1]-1, 1) },
+    { re: /^(\d{2})\/(\d{2})\/(\d{4})$/, parse: (m) => new Date(m[3], m[2]-1, m[1]) },
+    { re: /^(\d{4})-(\d{2})-(\d{2})$/,   parse: (m) => new Date(m[1], m[2]-1, m[3]) },
+  ];
+  let expDate = null;
+  for (const { re, parse } of formats) {
+    const m = expStr.match(re);
+    if (m) { expDate = parse(m); break; }
+  }
+  if (!expDate || isNaN(expDate)) return { status: 'Unknown', days: 0 };
+  const days   = Math.floor((expDate - new Date()) / 86400000);
+  return { status: days >= 0 ? 'Valid' : 'Expired', days: Math.max(days, 0) };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POPULATE RESULT UI
+// ═══════════════════════════════════════════════════════════════
+function populateResult(raw, parsed, type) {
+  // Raw data box
+  document.getElementById('rawDataBox').textContent =
+    raw.length > 300 ? raw.substring(0, 300) + '...' : raw;
+
+  // Banner
+  const banner = document.getElementById('detectionBanner');
+  banner.className = 'alert border-0 rounded-4 mb-3 p-3 alert-success';
+  document.getElementById('bannerIcon').textContent  = '✅';
+  document.getElementById('bannerTitle').textContent = `${type} Detected!`;
+  document.getElementById('bannerSub').textContent   = `Format: ${parsed.format || 'Unknown'}`;
+
+  // Fields
+  const fieldDefs = [
+    ['medicine_name',      'Medicine Name'],
+    ['manufacturer',       'Manufacturer'],
+    ['batch_number',       'Batch Number'],
+    ['serial_number',      'Serial Number'],
+    ['gtin',               'GTIN'],
+    ['dosage',             'Dosage'],
+    ['manufacturing_date', 'Mfg. Date'],
+    ['expiry_date',        'Expiry Date'],
+  ];
+
+  const container = document.getElementById('parsedFields');
+  container.innerHTML = '';
+  let hasFields = false;
+
+  fieldDefs.forEach(([key, label]) => {
+    const val = parsed[key];
+    if (!val || val === 'undefined') return;
+    hasFields = true;
+    container.innerHTML += `
+      <div class="field-row">
+        <span class="field-label">${label}</span>
+        <span class="field-value">${val}</span>
+      </div>`;
+  });
+
+  if (!hasFields) {
+    container.innerHTML = '<p class="text-muted small mb-0">No structured fields detected. Raw data shown above.</p>';
+  }
+
+  // Expiry check
+  const expiry = checkExpiry(parsed.expiry_date);
+  const ec = document.getElementById('expiryContent');
+  if (expiry.status === 'Valid') {
+    ec.innerHTML = `
+      <span class="badge bg-success px-3 py-2 fs-6 mb-1">✅ Valid</span>
+      <div class="text-muted small mt-1">${expiry.days} days remaining</div>`;
+  } else if (expiry.status === 'Expired') {
+    ec.innerHTML = `<span class="badge bg-danger px-3 py-2 fs-6">❌ EXPIRED</span>`;
+  } else {
+    ec.innerHTML = `<span class="badge bg-secondary px-3 py-2">Expiry Unknown</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEND TO FULL ANALYSIS
+// ═══════════════════════════════════════════════════════════════
+function sendToFullAnalysis() {
+  if (!lastDetected) return;
+
+  // Capture current video frame as image
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  ctx.drawImage(video, 0, 0);
+
+  canvas.toBlob(blob => {
+    const file = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+    const dt   = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('formImageInput').files = dt.files;
+    document.getElementById('formLanguage').value   = 'en';
+    document.getElementById('captureForm').submit();
+  }, 'image/jpeg', 0.92);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function showState(state) {
+  ['waiting','scanning','result','error'].forEach(s => {
+    const el = document.getElementById(s + 'State');
+    if (el) el.classList.toggle('d-none', s !== state);
+  });
+}
+
+function setStatus(msg, type) {
+  const badge = document.getElementById('statusBadge');
+  badge.className = 'status-badge' + (type ? ' ' + type : '');
+  badge.innerHTML = msg;
+}
+
+function setMode(mode) {
+  scanMode = mode;
+  document.getElementById('modeAuto').classList.toggle('active', mode === 'auto');
+  document.getElementById('modeAuto').classList.toggle('btn-primary', mode === 'auto');
+  document.getElementById('modeAuto').classList.toggle('btn-outline-primary', mode !== 'auto');
+  document.getElementById('modeManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('modeManual').classList.toggle('btn-primary', mode === 'manual');
+  document.getElementById('modeManual').classList.toggle('btn-outline-primary', mode !== 'manual');
+
+  if (stream) {
+    if (mode === 'auto') { startAutoScan(); }
+    else { if (scanTimer) { clearInterval(scanTimer); scanTimer = null; } }
+  }
+}
+
+function resetScanner() {
+  lastDetected = null;
+  showState(stream ? 'scanning' : 'waiting');
+  setStatus('Scanning...', '');
+  if (stream && scanMode === 'auto') startAutoScan();
+}
+
+function copyRawData() {
+  const text = document.getElementById('rawDataBox').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Copied!', 'success'));
+}
+
+function showToast(msg, type='info') {
+  const colours = { success:'#0F9D58', danger:'#D93025', info:'#1A73E8', warning:'#F59E0B' };
+  const id      = 'toast-' + Date.now();
+  let cont = document.getElementById('toastCont');
+  if (!cont) {
+    cont = document.createElement('div');
+    cont.id = 'toastCont';
+    cont.className = 'position-fixed bottom-0 end-0 p-3';
+    cont.style.zIndex = 9999;
+    document.body.appendChild(cont);
+  }
+  cont.insertAdjacentHTML('beforeend', `
+    <div id="${id}" class="toast show align-items-center text-white border-0"
+         style="background:${colours[type]||colours.info}">
+      <div class="d-flex">
+        <div class="toast-body fw-semibold">${msg}</div>
+        <button class="btn-close btn-close-white me-2 m-auto"
+                onclick="this.closest('.toast').remove()"></button>
+      </div>
+    </div>`);
+  setTimeout(() => document.getElementById(id)?.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+// Auto-start camera on page load
+window.addEventListener('load', () => {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    showState('waiting');
+  } else {
+    showState('error');
+    document.getElementById('errorMsg').textContent =
+      'Camera API not supported. Please use Chrome or Edge.';
+  }
+});
+
+// Stop camera when leaving page
+window.addEventListener('beforeunload', stopCamera);
+</script>
+{% endblock %}

@@ -1,190 +1,605 @@
 {% extends "base.html" %}
 {% block title %}MedSecure AI — Analysis Result{% endblock %}
 
+{% block head %}
+<style>
+/* ── Result page specific styles ─────────────────────────────────────── */
+.result-hero {
+  border-radius: 1.25rem;
+  padding: 2rem 2.5rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+.result-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 85% 50%, rgba(255,255,255,.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.result-hero-genuine    { background: linear-gradient(135deg, #065F46, #0F9D58); }
+.result-hero-counterfeit{ background: linear-gradient(135deg, #7F1D1D, #D93025); }
+.result-hero-suspicious { background: linear-gradient(135deg, #78350F, #D97706); }
+.result-hero-expired    { background: linear-gradient(135deg, #1E1B4B, #6D28D9); }
+
+.hero-pred-icon { font-size: 3.5rem; opacity: .9; line-height: 1; }
+.hero-pred-label {
+  font-size: 2rem; font-weight: 800;
+  font-family: 'Space Grotesk', sans-serif;
+  line-height: 1; margin-bottom: .35rem;
+}
+.hero-pred-sub { font-size: .95rem; opacity: .82; max-width: 500px; line-height: 1.5; }
+
+.hero-score-ring {
+  width: 90px; height: 90px; border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  border: 3px solid rgba(255,255,255,.3);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.hero-score-val { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+.hero-score-lbl { font-size: .62rem; opacity: .75; text-transform: uppercase; letter-spacing: .08em; }
+
+/* ── Info table ─────────────────────────────────────────────────────── */
+.info-table { width: 100%; }
+.info-table tr { border-bottom: 1px solid var(--border); }
+.info-table tr:last-child { border-bottom: none; }
+.info-table td { padding: .7rem .75rem; font-size: .9rem; }
+.info-table td:first-child {
+  color: var(--muted); font-weight: 500;
+  width: 45%; background: var(--surface);
+}
+.info-table td:last-child { font-weight: 600; color: var(--text); }
+
+/* ── Recommendation card ────────────────────────────────────────────── */
+.rec-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.rec-header {
+  padding: 1rem 1.25rem;
+  display: flex; align-items: center; gap: .75rem;
+}
+.rec-header-genuine    { background: #ECFDF5; border-bottom: 2px solid #0F9D58; }
+.rec-header-counterfeit{ background: #FEF2F2; border-bottom: 2px solid #D93025; }
+.rec-header-suspicious { background: #FFFBEB; border-bottom: 2px solid #D97706; }
+.rec-header-expired    { background: #FEF2F2; border-bottom: 2px solid #7C3AED; }
+.rec-icon { font-size: 1.75rem; }
+.rec-title { font-weight: 700; font-size: 1.05rem; margin-bottom: .15rem; }
+.rec-msg   { font-size: .88rem; color: var(--muted); margin: 0; }
+.rec-body  { padding: 1.25rem; background: #fff; }
+.rec-action {
+  display: flex; align-items: flex-start; gap: .6rem;
+  padding: .5rem .75rem; border-radius: .6rem;
+  background: var(--surface); margin-bottom: .5rem;
+  font-size: .87rem;
+}
+.rec-action:last-child { margin-bottom: 0; }
+.rec-action-icon { font-size: 1rem; flex-shrink: 0; margin-top: .05rem; }
+
+/* ── Score bars ─────────────────────────────────────────────────────── */
+.score-row { margin-bottom: 1rem; }
+.score-row:last-child { margin-bottom: 0; }
+.score-label {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: .35rem; font-size: .88rem;
+}
+.score-label-text { color: var(--muted); font-weight: 500; }
+.score-label-val  { font-weight: 700; font-size: .9rem; }
+.score-track {
+  height: 10px; background: #E8EDF5;
+  border-radius: 50rem; overflow: hidden;
+}
+.score-fill {
+  height: 100%; border-radius: 50rem;
+  transition: width 1.4s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Why section ────────────────────────────────────────────────────── */
+.reason-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .55rem 0; border-bottom: 1px solid var(--border);
+  font-size: .88rem;
+}
+.reason-row:last-child { border-bottom: none; }
+
+/* ── Risk badge ─────────────────────────────────────────────────────── */
+.big-risk {
+  display: inline-flex; align-items: center; gap: .5rem;
+  border-radius: 50rem; padding: .6rem 1.5rem;
+  font-size: 1.1rem; font-weight: 700;
+}
+
+/* ── Pharmacy button ────────────────────────────────────────────────── */
+.pharmacy-btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: var(--blue); color: #fff;
+  border: none; border-radius: .75rem;
+  padding: .65rem 1.4rem; font-weight: 600;
+  font-size: .9rem; text-decoration: none;
+  transition: opacity .2s, transform .2s;
+}
+.pharmacy-btn:hover { opacity: .9; transform: translateY(-1px); color: #fff; }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="py-5">
-  <div class="container">
+<div class="container">
 
-    <!-- Back / Download actions -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Analyze Another
+  <!-- ── Top bar ───────────────────────────────────────────────────────── -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+      <i class="bi bi-arrow-left me-1"></i>Analyze Another
+    </a>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-clock-history me-1"></i>History
       </a>
       <a href="{{ url_for('download_report', report_id=report_id) }}"
-         class="btn btn-success btn-sm">
-        <i class="bi bi-file-pdf me-1"></i>Download PDF Report
+         class="btn btn-success btn-sm rounded-pill px-3">
+        <i class="bi bi-file-pdf me-1"></i>Download PDF
       </a>
     </div>
+  </div>
 
-    <!-- ── Prediction Banner ───────────────────────────────────────────────── -->
-    {% set pred_class = 'success' if report.prediction == 'Genuine' else 'danger' %}
-    {% set pred_icon  = 'bi-shield-check' if report.prediction == 'Genuine' else 'bi-shield-x' %}
-    <div class="result-banner bg-{{ pred_class }} text-white rounded-4 p-4 mb-4 shadow">
-      <div class="row align-items-center g-3">
-        <div class="col-auto">
-          <i class="bi {{ pred_icon }}" style="font-size:3rem"></i>
-        </div>
-        <div class="col">
-          <h2 class="fw-bold mb-1">{{ report.prediction | upper }}</h2>
-          <p class="mb-0 opacity-75">{{ report.recommendation }}</p>
-        </div>
-        <div class="col-auto text-end">
-          <div class="score-circle bg-white text-{{ pred_class }}">
-            <span class="fw-bold fs-4">{{ report.authenticity_score | int }}%</span>
-            <div class="small">Authentic</div>
-          </div>
-        </div>
+  <!-- ── Hero banner ───────────────────────────────────────────────────── -->
+  {% set pred = report.prediction | default('Unknown') %}
+
+  {# 
+     IMPORTANT:
+     Use rec_dict.type for colour/icon styling.
+     This prevents Kannada/Hindi translation from changing
+     the actual result design.
+  #}
+
+  {% if rec_dict %}
+    {% set rtype = rec_dict.type | default('warning') %}
+
+    {% if rtype == 'safe' %}
+      {% set hcls = 'result-hero-genuine' %}
+      {% set picon = '✅' %}
+    {% elif rtype == 'danger' %}
+      {% set hcls = 'result-hero-counterfeit' %}
+      {% set picon = '🚨' %}
+    {% else %}
+      {% set hcls = 'result-hero-suspicious' %}
+      {% set picon = '⚠️' %}
+    {% endif %}
+
+  {% else %}
+
+    {# Fallback if recommendation dictionary is unavailable #}
+
+    {% if pred == 'Genuine' %}
+      {% set hcls = 'result-hero-genuine' %}
+      {% set picon = '✅' %}
+    {% elif pred == 'Counterfeit' %}
+      {% set hcls = 'result-hero-counterfeit' %}
+      {% set picon = '🚨' %}
+    {% elif pred == 'Expired' %}
+      {% set hcls = 'result-hero-expired' %}
+      {% set picon = '⏰' %}
+    {% else %}
+      {% set hcls = 'result-hero-suspicious' %}
+      {% set picon = '⚠️' %}
+    {% endif %}
+
+  {% endif %}
+
+
+  <div class="result-hero {{ hcls }}">
+
+    <div class="row align-items-center g-3">
+
+      <!-- Result Icon -->
+      <div class="col-auto">
+        <div class="hero-pred-icon">{{ picon }}</div>
       </div>
-    </div>
 
-    <div class="row g-4">
 
-      <!-- ── Left column: Medicine details ─────────────────────────────── -->
-      <div class="col-lg-7">
+      <!-- Result Information -->
+      <div class="col">
 
-        <!-- Medicine Information -->
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-          <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
-            <h5 class="fw-bold"><i class="bi bi-capsule text-primary me-2"></i>Medicine Information</h5>
-          </div>
-          <div class="card-body px-4 pb-4">
-            <table class="table table-borderless result-table mb-0">
-              <tbody>
-                <tr>
-                  <td class="text-muted fw-medium" style="width:45%">Medicine Name</td>
-                  <td class="fw-semibold">{{ report.medicine_name }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted fw-medium">Manufacturer</td>
-                  <td>{{ report.manufacturer }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted fw-medium">Batch Number</td>
-                  <td><code>{{ report.batch_number }}</code></td>
-                </tr>
-                <tr>
-                  <td class="text-muted fw-medium">Mfg. Date</td>
-                  <td>{{ report.manufacturing_date }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted fw-medium">Expiry Date</td>
-                  <td>{{ report.expiry_date }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted fw-medium">Expiry Status</td>
-                  <td>
-                    {% if report.expiry_status == 'Valid' %}
-                      <span class="badge bg-success-soft text-success">✅ {{ report.expiry_status }}</span>
-                    {% elif report.expiry_status == 'Expired' %}
-                      <span class="badge bg-danger-soft text-danger">❌ {{ report.expiry_status }}</span>
-                    {% else %}
-                      <span class="badge bg-secondary-soft text-secondary">{{ report.expiry_status }}</span>
-                    {% endif %}
-                  </td>
-                </tr>
-                {% if report.days_remaining %}
-                <tr>
-                  <td class="text-muted fw-medium">Days Remaining</td>
-                  <td>{{ report.days_remaining }} days ({{ report.months_remaining }} months)</td>
-                </tr>
-                {% endif %}
-                <tr>
-                  <td class="text-muted fw-medium">Language</td>
-                  <td>{{ 'English' if report.language == 'en' else 'ಕನ್ನಡ (Kannada)' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="hero-pred-label">
+          {% if rec_dict and rec_dict.title %}
+            {{ rec_dict.title }}
+          {% else %}
+            {{ pred | upper }}
+          {% endif %}
         </div>
 
-        <!-- Uploaded image -->
-        {% if report.image_path %}
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-          <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
-            <h5 class="fw-bold"><i class="bi bi-image text-primary me-2"></i>Uploaded Image</h5>
-          </div>
-          <div class="card-body text-center pb-4">
-            <img src="{{ url_for('static', filename=report.image_path.replace('static/', '').replace('static\\', '')) }}"
-                 alt="Medicine Package"
-                 class="img-fluid rounded-3 shadow-sm"
-                 style="max-height:260px">
-          </div>
-        </div>
+
+        <!-- Recommendation Message -->
+        {% if rec_dict %}
+          <p class="hero-pred-sub">
+            {{ rec_dict.message }}
+          </p>
+
+        {% elif report.recommendation %}
+
+          <p class="hero-pred-sub">
+            {{ report.recommendation }}
+          </p>
         {% endif %}
 
+
+        <!-- Risk Badge -->
+        {% set rl = report.risk_level | default('Unknown') %}
+
+        <div class="mt-2">
+
+          <span class="badge px-3 py-2 fw-semibold"
+                style="
+                  background:rgba(255,255,255,.2);
+                  color:#fff;
+                  font-size:.82rem;
+                ">
+
+            {% if rl == 'Low' %}
+              🟢
+            {% elif rl == 'Medium' %}
+              🟡
+            {% else %}
+              🔴
+            {% endif %}
+
+            {{ rl }} Risk
+
+          </span>
+
+        </div>
+
       </div>
 
-      <!-- ── Right column: Scores ───────────────────────────────────────── -->
-      <div class="col-lg-5">
 
-        <!-- Risk Level -->
-        {% set risk_map = {'Low': 'success', 'Medium': 'warning', 'High': 'danger'} %}
-        {% set risk_col = risk_map.get(report.risk_level, 'secondary') %}
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-          <div class="card-body p-4 text-center">
-            <h6 class="text-muted fw-medium mb-3">Risk Level</h6>
-            <div class="risk-badge bg-{{ risk_col }}-soft text-{{ risk_col }} rounded-pill px-4 py-2 fs-5 fw-bold d-inline-block">
-              {{ report.risk_level }} Risk
+      <!-- Authenticity Score -->
+      <div class="col-auto">
+
+        <div class="hero-score-ring">
+
+          <div class="hero-score-val">
+            {{ report.authenticity_score | default(0) | int }}%
+          </div>
+
+          <div class="hero-score-lbl">
+            Authentic
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── Main grid ─────────────────────────────────────────────────────── -->
+  <div class="row g-4">
+
+    <!-- LEFT column -->
+    <div class="col-lg-7">
+
+      <!-- Medicine information -->
+      <div class="ms-card mb-4">
+        <div class="ms-card-header">
+          <i class="bi bi-capsule" style="color:var(--blue);font-size:1.15rem"></i>
+          <h5>Medicine Information</h5>
+        </div>
+        <div class="p-0">
+          <table class="info-table">
+            <tbody>
+              <tr>
+                <td>Medicine Name</td>
+                <td>{{ report.medicine_name | default('Not Detected') }}</td>
+              </tr>
+              <tr>
+                <td>Manufacturer</td>
+                <td>{{ report.manufacturer | default('Not Detected') }}</td>
+              </tr>
+              <tr>
+                <td>Batch Number</td>
+                <td>
+                  {% set bn = report.batch_number | default('Not Detected') %}
+                  {% if bn == 'Not Detected' %}
+                    <span style="color:#D93025;font-family:monospace">Not Detected</span>
+                  {% else %}
+                    <code>{{ bn }}</code>
+                  {% endif %}
+                </td>
+              </tr>
+              <tr><td>Mfg. Date</td><td>{{ report.manufacturing_date | default('N/A') }}</td></tr>
+              <tr><td>Expiry Date</td><td>{{ report.expiry_date | default('N/A') }}</td></tr>
+              <tr>
+                <td>Expiry Status</td>
+                <td>
+                  {% set es = report.expiry_status | default('Unknown') %}
+                  {% if es == 'Valid' %}
+                    <span class="badge badge-valid px-2 py-1 rounded-pill">✅ Valid</span>
+                    {% if report.days_remaining %}
+                      <span class="text-muted small ms-2">
+                        {{ report.days_remaining }} days left
+                      </span>
+                    {% endif %}
+                  {% elif es == 'Expired' %}
+                    <span class="badge badge-expired px-2 py-1 rounded-pill">❌ Expired</span>
+                  {% else %}
+                    <span class="badge bg-secondary-soft text-secondary px-2 py-1 rounded-pill">
+                      {{ es }}
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td>Language</td>
+                <td>{{ 'English' if report.language == 'en' else 'ಕನ್ನಡ (Kannada)' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Recommendation card ──────────────────────────────────────── -->
+      {% if rec_dict %}
+        {% set rtype = rec_dict.type | default('warning') %}
+        {% if rtype == 'safe' %}
+          {% set rhcls = 'rec-header-genuine' %}
+          {% set ricon = '✅' %}
+          {% set rtcol = 'text-success' %}
+        {% elif rtype == 'danger' %}
+          {% set rhcls = 'rec-header-counterfeit' %}
+          {% set ricon = '🚨' %}
+          {% set rtcol = 'text-danger' %}
+        {% else %}
+          {% set rhcls = 'rec-header-suspicious' %}
+          {% set ricon = '⚠️' %}
+          {% set rtcol = 'text-warning' %}
+        {% endif %}
+
+        <div class="rec-card mb-4 shadow-sm">
+          <div class="rec-header {{ rhcls }}">
+            <span class="rec-icon">{{ ricon }}</span>
+            <div>
+              <div class="rec-title {{ rtcol }}">{{ rec_dict.title }}</div>
+              <p class="rec-msg">{{ rec_dict.message }}</p>
+            </div>
+          </div>
+          <div class="rec-body">
+
+            {% if rec_dict.actions %}
+            <div class="fw-semibold small text-muted mb-2 d-flex align-items-center gap-1">
+              <i class="bi bi-list-check"></i> Actions to Take
+            </div>
+            {% for action in rec_dict.actions %}
+            <div class="rec-action">
+              <span class="rec-action-icon">
+                {% if rtype == 'safe' %}✅{% elif rtype == 'danger' %}⛔{% else %}⚠️{% endif %}
+              </span>
+              <span>{{ action }}</span>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% if rec_dict.alternative_medicine %}
+            <div class="mt-3 p-3 rounded-3"
+                 style="background:#F0FDF4;border:1px solid #A7F3D0">
+              <div class="fw-semibold small text-success mb-1">
+                <i class="bi bi-arrow-right-circle me-1"></i>Alternative Medicine
+              </div>
+              <div class="small">{{ rec_dict.alternative_medicine }}</div>
+            </div>
+            {% endif %}
+
+            {% if rec_dict.show_pharmacy_button and rec_dict.pharmacy_url %}
+            <div class="mt-3">
+              <a href="{{ rec_dict.pharmacy_url }}" target="_blank" class="pharmacy-btn">
+                <i class="bi bi-shop"></i>
+                {{ rec_dict.pharmacy_button_text | default('Find Verified Medicine') }}
+                <i class="bi bi-arrow-up-right-square ms-1" style="font-size:.8rem"></i>
+              </a>
+            </div>
+            {% endif %}
+
+          </div>
+        </div>
+
+      {% elif report.recommendation %}
+        <!-- Fallback plain text recommendation -->
+        <div class="ms-card mb-4">
+          <div class="ms-card-header">
+            <i class="bi bi-lightbulb" style="color:var(--amber);font-size:1.15rem"></i>
+            <h5>Recommendation</h5>
+          </div>
+          <div class="ms-card-body">
+            <p class="mb-0" style="font-size:.95rem;line-height:1.7">
+              {{ report.recommendation }}
+            </p>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Uploaded image -->
+      {% if report.image_path %}
+      <div class="ms-card mb-4">
+        <div class="ms-card-header">
+          <i class="bi bi-image" style="color:var(--blue);font-size:1.15rem"></i>
+          <h5>Uploaded Image</h5>
+        </div>
+        <div class="ms-card-body text-center">
+          <img src="/{{ report.image_path }}"
+               alt="Medicine"
+               class="img-fluid rounded-3 shadow-sm"
+               style="max-height:280px;object-fit:contain"
+               onerror="this.parentElement.innerHTML='<p class=text-muted>Image not available</p>'">
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- RIGHT column -->
+    <div class="col-lg-5">
+
+      <!-- Score breakdown -->
+      <div class="ms-card mb-4">
+        <div class="ms-card-header">
+          <i class="bi bi-bar-chart-fill" style="color:var(--blue);font-size:1.15rem"></i>
+          <h5>Score Breakdown</h5>
+        </div>
+        <div class="ms-card-body">
+
+          {% set bars = [
+            ('AI Confidence',   report.ai_confidence   | default(0) | float,
+             '#1A73E8', 'Model certainty about Genuine / Counterfeit'),
+            ('OCR Confidence',  report.ocr_confidence  | default(0) | float,
+             '#0891B2', 'Text readability by Tesseract OCR'),
+            ('Packaging Score', report.packaging_score | default(0) | float,
+             '#F59E0B', 'Sharpness + colour + text density'),
+            ('Authenticity',    report.authenticity_score | default(0) | float,
+             '#0F9D58' if pred == 'Genuine' else '#D93025',
+             'Final weighted composite score'),
+          ] %}
+
+          {% for label, val, colour, tip in bars %}
+          {% set bv = [[val, 100] | min, 0] | max %}
+          <div class="score-row">
+            <div class="score-label">
+              <span class="score-label-text">
+                {{ label }}
+                <span class="badge bg-secondary-soft text-secondary ms-1 px-1"
+                      style="font-size:.6rem;cursor:help" title="{{ tip }}">?</span>
+              </span>
+              <span class="score-label-val" style="color:{{ colour }}">
+                {{ "%.1f" | format(val) }}%
+              </span>
+            </div>
+            <div class="score-track">
+              <div class="score-fill" style="width:{{ bv }}%;background:{{ colour }}"></div>
+            </div>
+            {% if label == 'OCR Confidence' and val < 5 %}
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">
+              <i class="bi bi-info-circle me-1"></i>
+              Low OCR — pill image or label not visible in photo.
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+
+          <!-- Legend -->
+          <div class="mt-3 pt-3 border-top">
+            <div class="row g-1 text-center" style="font-size:.7rem">
+              <div class="col-4">
+                <span class="badge w-100 py-1 rounded-pill"
+                      style="background:#ECFDF5;color:#065F46">75–100 Low Risk</span>
+              </div>
+              <div class="col-4">
+                <span class="badge w-100 py-1 rounded-pill"
+                      style="background:#FFFBEB;color:#78350F">45–74 Medium</span>
+              </div>
+              <div class="col-4">
+                <span class="badge w-100 py-1 rounded-pill"
+                      style="background:#FEF2F2;color:#7F1D1D">0–44 High Risk</span>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Score breakdown -->
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-          <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4">
-            <h5 class="fw-bold"><i class="bi bi-bar-chart text-primary me-2"></i>Score Breakdown</h5>
+      <!-- Safety guidance -->
+      {% if report.safety_guidance %}
+      {% set sg = report.safety_guidance %}
+      <div class="ms-card mb-4">
+        <div class="ms-card-header">
+          <i class="bi bi-heart-pulse" style="color:#D93025;font-size:1.15rem"></i>
+          <h5>Safety Guidance</h5>
+        </div>
+        <div class="ms-card-body">
+          <div class="rounded-3 p-3 mb-3 small fw-semibold"
+               style="background:{{ '#ECFDF5' if sg.is_safe else '#FEF2F2' }};
+                      color:{{ '#065F46' if sg.is_safe else '#7F1D1D' }};
+                      border:1px solid {{ '#A7F3D0' if sg.is_safe else '#FECACA' }}">
+            <i class="bi {{ 'bi-shield-check' if sg.is_safe else 'bi-shield-exclamation' }} me-2"></i>
+            {{ sg.title }}
           </div>
-          <div class="card-body px-4 pb-4">
-            {% set scores = [
-              ('AI Confidence', report.ai_confidence, 'primary'),
-              ('OCR Confidence', report.ocr_confidence, 'info'),
-              ('Packaging Score', report.packaging_score, 'warning'),
-              ('Authenticity', report.authenticity_score, pred_class),
-            ] %}
-            {% for label, val, colour in scores %}
-            <div class="mb-3">
-              <div class="d-flex justify-content-between small mb-1">
-                <span class="text-muted">{{ label }}</span>
-                <span class="fw-semibold text-{{ colour }}">{{ "%.1f"|format(val) }}%</span>
-              </div>
-              <div class="progress rounded-pill" style="height:8px">
-                <div class="progress-bar bg-{{ colour }} rounded-pill"
-                     style="width:{{ val }}%"></div>
-              </div>
+          <p class="small text-muted mb-3">{{ sg.message }}</p>
+          {% if sg.actions %}
+          <div class="d-flex flex-column gap-2">
+            {% for a in sg.actions %}
+            <div class="d-flex align-items-start gap-2 small">
+              <i class="bi {{ 'bi-check-circle-fill text-success' if sg.is_safe else 'bi-exclamation-circle-fill text-danger' }} mt-1 flex-shrink-0"></i>
+              <span>{{ a }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Why this result -->
+      {% if report.explanation and report.explanation.reasons %}
+      {% set exp = report.explanation %}
+      <div class="ms-card mb-4">
+        <div class="ms-card-header">
+          <i class="bi bi-list-check" style="color:#7C3AED;font-size:1.15rem"></i>
+          <h5>Why This Result?</h5>
+        </div>
+        <div class="ms-card-body">
+          <div class="mb-3 px-3 py-2 rounded-3 small fw-semibold"
+               style="background:var(--surface)">
+            <i class="bi bi-flag me-1"></i>
+            {{ exp.flagged_count | default(0) }} issue(s) flagged ·
+            Overall confidence: {{ exp.overall_confidence | default(0) }}%
+          </div>
+          <div>
+            {% for r in exp.reasons %}
+            <div class="reason-row">
+              {% if r.flagged %}
+                <i class="bi bi-x-circle-fill text-danger flex-shrink-0"></i>
+              {% else %}
+                <i class="bi bi-check-circle-fill text-success flex-shrink-0"></i>
+              {% endif %}
+              <span>{{ r.text }}</span>
             </div>
             {% endfor %}
           </div>
         </div>
+      </div>
+      {% endif %}
 
-        <!-- Raw OCR text (collapsible) -->
-        {% if report.raw_text %}
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-          <div class="card-header bg-transparent border-0 p-0">
-            <button class="btn btn-link text-decoration-none w-100 text-start px-4 py-3"
-                    data-bs-toggle="collapse" data-bs-target="#rawOCR">
-              <i class="bi bi-file-text text-primary me-2"></i>
-              <span class="fw-semibold">Raw OCR Text</span>
-              <i class="bi bi-chevron-down float-end mt-1"></i>
-            </button>
-          </div>
-          <div id="rawOCR" class="collapse">
-            <div class="card-body px-4 pb-4">
-              <pre class="bg-light rounded-3 p-3 small" style="max-height:180px;overflow:auto">{{ report.raw_text }}</pre>
-            </div>
+      <!-- Raw OCR -->
+      {% if report.raw_text %}
+      <div class="ms-card mb-4">
+        <div class="p-0">
+          <button class="btn btn-link text-decoration-none w-100 text-start px-4 py-3 fw-semibold"
+                  data-bs-toggle="collapse" data-bs-target="#rawOCR"
+                  style="color:var(--blue)">
+            <i class="bi bi-file-text me-2"></i>Raw OCR Text
+            <i class="bi bi-chevron-down float-end mt-1"></i>
+          </button>
+        </div>
+        <div id="rawOCR" class="collapse">
+          <div class="px-4 pb-4">
+            <pre class="bg-dark text-success rounded-3 p-3 small mb-0"
+                 style="max-height:160px;overflow:auto;font-size:.78rem;white-space:pre-wrap">{{ report.raw_text }}</pre>
           </div>
         </div>
-        {% endif %}
-
-        <!-- Timestamp -->
-        {% if report.timestamp %}
-        <p class="text-muted small text-center">
-          <i class="bi bi-clock me-1"></i>Analyzed: {{ report.timestamp }}
-        </p>
-        {% endif %}
-
       </div>
-    </div>
+      {% endif %}
 
+      {% if report.timestamp %}
+      <p class="text-center text-muted small">
+        <i class="bi bi-clock me-1"></i>{{ report.timestamp }}
+      </p>
+      {% endif %}
+
+    </div>
   </div>
+
+</div>
 </section>
 {% endblock %}
