@@ -1,695 +1,677 @@
-{% extends "base.html" %}
-{% block title %}MedSecure AI — Home{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-{% block head %}
-<style>
-.hero-section {
-  background: linear-gradient(135deg, #0D1B2A 0%, #1A3A5C 50%, #0D1B2A 100%);
-  min-height: 92vh;
-  display: flex;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-}
-.hero-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 70% 50%, rgba(26,115,232,.18) 0%, transparent 60%),
-              radial-gradient(ellipse at 20% 80%, rgba(0,200,150,.12) 0%, transparent 50%);
-  pointer-events: none;
-}
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  background: rgba(0,200,150,.15);
-  border: 1px solid rgba(0,200,150,.3);
-  color: #00C896;
-  border-radius: 50rem;
-  padding: .35rem 1rem;
-  font-size: .82rem;
-  font-weight: 600;
-  letter-spacing: .04em;
-  margin-bottom: 1.5rem;
-}
-.hero-title {
-  font-size: clamp(2.4rem, 5vw, 3.8rem);
-  font-weight: 800;
-  line-height: 1.1;
-  color: #fff;
-  margin-bottom: 1.25rem;
-  font-family: 'Space Grotesk', sans-serif;
-}
-.hero-title .accent {
-  background: linear-gradient(135deg, #1A73E8, #00C896);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.hero-desc {
-  font-size: 1.1rem;
-  color: rgba(255,255,255,.65);
-  line-height: 1.7;
-  max-width: 520px;
-  margin-bottom: 2rem;
-}
-.hero-btn-primary {
-  background: linear-gradient(135deg, #1A73E8, #0F9D58);
-  border: none;
-  color: #fff;
-  font-weight: 700;
-  font-size: 1rem;
-  padding: .85rem 2rem;
-  border-radius: .75rem;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  transition: transform .2s, box-shadow .2s;
-  box-shadow: 0 4px 24px rgba(26,115,232,.35);
-}
-.hero-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(26,115,232,.45);
-  color: #fff;
-}
-.hero-btn-secondary {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.2);
-  color: rgba(255,255,255,.85);
-  font-weight: 600;
-  font-size: 1rem;
-  padding: .85rem 2rem;
-  border-radius: .75rem;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  transition: background .2s;
-  backdrop-filter: blur(8px);
-}
-.hero-btn-secondary:hover {
-  background: rgba(255,255,255,.14);
-  color: #fff;
-}
-.hero-visual {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hero-card-main {
-  background: rgba(255,255,255,.06);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 1.25rem;
-  padding: 1.75rem;
-  width: 300px;
-  position: relative;
-  z-index: 2;
-}
-.hero-card-main .result-badge {
-  background: rgba(15,157,88,.2);
-  border: 1px solid rgba(15,157,88,.4);
-  color: #00C896;
-  border-radius: 50rem;
-  padding: .3rem .85rem;
-  font-size: .8rem;
-  font-weight: 700;
-  display: inline-block;
-  margin-bottom: .85rem;
-}
-.hero-card-main .medicine-name {
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-bottom: .2rem;
-}
-.hero-card-main .medicine-mfr {
-  color: rgba(255,255,255,.5);
-  font-size: .82rem;
-  margin-bottom: 1.1rem;
-}
-.score-ring {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: conic-gradient(#00C896 0% 92%, rgba(255,255,255,.1) 92% 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: .85rem;
-  position: relative;
-}
-.score-ring::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background: rgba(13,27,42,.85);
-}
-.score-ring span {
-  position: relative;
-  z-index: 1;
-  font-weight: 800;
-  font-size: 1.1rem;
-  color: #00C896;
-}
-.mini-bar-row {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  margin-bottom: .5rem;
-}
-.mini-bar-label {
-  color: rgba(255,255,255,.55);
-  font-size: .75rem;
-  width: 80px;
-  flex-shrink: 0;
-}
-.mini-bar-track {
-  flex: 1;
-  height: 5px;
-  background: rgba(255,255,255,.1);
-  border-radius: 50rem;
-  overflow: hidden;
-}
-.mini-bar-fill {
-  height: 100%;
-  border-radius: 50rem;
-  transition: width 1s ease;
-}
-.mini-bar-val {
-  color: rgba(255,255,255,.7);
-  font-size: .75rem;
-  width: 32px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.floating-chip {
-  position: absolute;
-  background: rgba(255,255,255,.08);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: .75rem;
-  padding: .55rem .9rem;
-  font-size: .78rem;
-  font-weight: 600;
-  color: rgba(255,255,255,.85);
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  white-space: nowrap;
-  animation: float 3s ease-in-out infinite;
-}
-@keyframes float {
-  0%,100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
-.chip-1 { top: -18px; right: -24px; animation-delay: 0s; }
-.chip-2 { bottom: 24px; left: -28px; animation-delay: 1s; }
-.chip-3 { top: 50%; right: -60px; animation-delay: 1.8s; }
-.dot-green { width:8px;height:8px;border-radius:50%;background:#00C896;flex-shrink:0; }
-.dot-blue  { width:8px;height:8px;border-radius:50%;background:#1A73E8;flex-shrink:0; }
-.dot-amber { width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0; }
+    <title>MedSecure AI | Medicine Verification</title>
 
-/* Stats band */
-.stats-band { background: #0D1B2A; border-top: 1px solid rgba(255,255,255,.07); }
-.stat-item { text-align:center; padding: 1.5rem 1rem; }
-.stat-number { font-size: 2.2rem; font-weight: 800; font-family: 'Space Grotesk',sans-serif; line-height:1; }
-.stat-label  { font-size: .78rem; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .08em; margin-top: .35rem; }
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-/* Features */
-.features-section { background: #F8FAFF; }
-.feature-card-new {
-  background: #fff;
-  border: 1px solid #E8EDF5;
-  border-radius: 1.25rem;
-  padding: 2rem 1.75rem;
-  height: 100%;
-  transition: transform .25s, box-shadow .25s, border-color .25s;
-  position: relative;
-  overflow: hidden;
-}
-.feature-card-new::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--fc, #1A73E8), transparent);
-  opacity: 0;
-  transition: opacity .25s;
-}
-.feature-card-new:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.1); border-color: transparent; }
-.feature-card-new:hover::before { opacity: 1; }
-.feature-icon-wrap {
-  width: 52px; height: 52px;
-  border-radius: .85rem;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.4rem;
-  margin-bottom: 1.25rem;
-}
-.feature-title { font-weight: 700; font-size: 1.05rem; margin-bottom: .5rem; color: #1A202C; }
-.feature-desc  { font-size: .9rem; color: #6B7280; line-height: 1.6; }
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-/* How it works */
-.steps-section { background: #fff; }
-.step-card {
-  background: #F8FAFF;
-  border: 1px solid #E8EDF5;
-  border-radius: 1.25rem;
-  padding: 2rem;
-  text-align: center;
-  height: 100%;
-  position: relative;
-}
-.step-num {
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1A73E8, #0F9D58);
-  color: #fff;
-  font-weight: 800;
-  font-size: 1.15rem;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 1rem;
-  font-family: 'Space Grotesk',sans-serif;
-}
-.step-icon { font-size: 2rem; margin-bottom: .75rem; display: block; }
-.step-title { font-weight: 700; font-size: 1rem; margin-bottom: .4rem; color: #1A202C; }
-.step-desc  { font-size: .875rem; color: #6B7280; line-height: 1.6; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f8fc;
+            color: #14213d;
+        }
 
-/* Crisis banner */
-.crisis-banner {
-  background: linear-gradient(135deg, #1A73E8 0%, #0F9D58 100%);
-  border-radius: 1.5rem;
-  padding: 3rem;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-.crisis-banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
-.crisis-stat { font-size: 3rem; font-weight: 900; font-family: 'Space Grotesk',sans-serif; }
-.crisis-sub  { font-size: 1rem; opacity: .8; margin-top: .25rem; }
+        /* NAVBAR */
 
-/* CTA */
-.cta-section { background: #0D1B2A; }
-.cta-card {
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 1.5rem;
-  padding: 4rem 3rem;
-  text-align: center;
-}
+        .navbar {
+            height: 72px;
+            background: rgba(255,255,255,0.95);
+            border-bottom: 1px solid #e6ebf2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 7%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-/* Pulse dot */
-.pulse-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: #00C896;
-  display: inline-block;
-  position: relative;
-}
-.pulse-dot::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid #00C896;
-  opacity: .5;
-  animation: pulseDot 1.5s ease-out infinite;
-}
-@keyframes pulseDot {
-  0%   { transform: scale(1); opacity: .5; }
-  100% { transform: scale(2); opacity: 0; }
-}
-</style>
-{% endblock %}
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 21px;
+            font-weight: 800;
+            color: #172b4d;
+        }
 
-{% block content %}
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #1769aa, #00a6a6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+            box-shadow: 0 8px 20px rgba(23,105,170,.2);
+        }
 
-<!-- ══════════════════════════════════════════════════════════════
-     HERO SECTION
-══════════════════════════════════════════════════════════════ -->
-<section class="hero-section">
-  <div class="container py-5 position-relative">
-    <div class="row align-items-center g-5">
+        .logo span {
+            color: #168c9b;
+        }
 
-      <!-- Left: Copy -->
-      <div class="col-lg-6">
-        <div class="hero-badge">
-          <span class="pulse-dot"></span>
-          AI-Powered Medicine Verification
-        </div>
-        <h1 class="hero-title">
-          Detect Counterfeit<br>
-          Medicines with<br>
-          <span class="accent">AI Precision</span>
-        </h1>
-        <p class="hero-desc">
-          MedSecure AI uses MobileNetV2 deep learning, bilingual OCR,
-          and QR scanning to verify medicine authenticity in under
-          5 seconds — supporting English and Kannada.
-        </p>
-        <div class="d-flex flex-wrap gap-3">
-          <a href="{{ url_for('upload') }}" class="hero-btn-primary">
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #65758b;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .nav-links a:hover {
+            color: #168c9b;
+        }
+
+        .nav-btn {
+            background: #14213d;
+            color: white !important;
+            padding: 11px 18px;
+            border-radius: 10px;
+        }
+
+        /* HERO */
+
+        .hero {
+            min-height: 620px;
+            padding: 80px 7% 70px;
+            display: grid;
+            grid-template-columns: 1.05fr .95fr;
+            align-items: center;
+            gap: 70px;
+            background:
+                radial-gradient(circle at 85% 15%, rgba(0,166,166,.12), transparent 30%),
+                radial-gradient(circle at 10% 70%, rgba(23,105,170,.08), transparent 28%);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #e7f7f6;
+            color: #087c80;
+            border: 1px solid #ccefed;
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 22px;
+        }
+
+        .badge i {
+            font-size: 14px;
+        }
+
+        h1 {
+            font-size: clamp(42px, 5vw, 68px);
+            line-height: 1.05;
+            letter-spacing: -2.5px;
+            margin-bottom: 24px;
+        }
+
+        h1 .gradient {
+            background: linear-gradient(90deg, #1769aa, #00a6a6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-text {
+            font-size: 18px;
+            line-height: 1.7;
+            color: #68788f;
+            max-width: 590px;
+            margin-bottom: 32px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .primary-btn {
+            border: none;
+            text-decoration: none;
+            background: linear-gradient(135deg, #1769aa, #00a6a6);
+            color: white;
+            padding: 15px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            display: inline-flex;
+            gap: 9px;
+            align-items: center;
+            box-shadow: 0 12px 25px rgba(0,140,160,.22);
+            cursor: pointer;
+        }
+
+        .secondary-btn {
+            text-decoration: none;
+            color: #253858;
+            background: white;
+            border: 1px solid #dfe6ef;
+            padding: 15px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        /* MEDICINE CARD */
+
+        .visual {
+            position: relative;
+        }
+
+        .scan-card {
+            background: rgba(255,255,255,.88);
+            border: 1px solid #e2e9f1;
+            border-radius: 28px;
+            padding: 25px;
+            box-shadow: 0 30px 70px rgba(31,55,80,.12);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-card::before {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            background: #dff8f6;
+            border-radius: 50%;
+            right: -80px;
+            top: -90px;
+        }
+
+        .scan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .scan-title {
+            font-weight: 800;
+        }
+
+        .live {
+            background: #eaf9f1;
+            color: #17824d;
+            border-radius: 20px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .medicine-box {
+            height: 290px;
+            margin: 22px 0;
+            border-radius: 20px;
+            background: linear-gradient(145deg, #edf7fa, #f8fbfd);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 1px dashed #b9cbd9;
+        }
+
+        .medicine {
+            width: 180px;
+            height: 80px;
+            background: linear-gradient(90deg, #fff 50%, #29a7a8 50%);
+            border-radius: 50px;
+            transform: rotate(-18deg);
+            box-shadow: 0 20px 30px rgba(24,65,85,.2);
+            position: relative;
+        }
+
+        .medicine::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: #d3dce4;
+        }
+
+        .scan-line {
+            position: absolute;
+            width: 80%;
+            height: 2px;
+            background: #00a6a6;
+            box-shadow: 0 0 12px #00a6a6;
+            animation: scan 2.5s infinite;
+        }
+
+        @keyframes scan {
+            0%,100% { top: 22%; }
+            50% { top: 76%; }
+        }
+
+        .scan-status {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            background: #f7fafc;
+            padding: 14px;
+            border-radius: 14px;
+        }
+
+        .check {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #e7f8f0;
+            color: #16854d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text strong {
+            display: block;
+            font-size: 14px;
+        }
+
+        .status-text small {
+            color: #8190a3;
+        }
+
+        /* FEATURES */
+
+        .features {
+            background: white;
+            padding: 70px 7%;
+        }
+
+        .section-heading {
+            text-align: center;
+            max-width: 650px;
+            margin: auto;
+        }
+
+        .section-heading h2 {
+            font-size: 36px;
+            margin-bottom: 13px;
+        }
+
+        .section-heading p {
+            color: #74849a;
+            line-height: 1.6;
+        }
+
+        .feature-grid {
+            margin-top: 45px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+        }
+
+        .feature {
+            padding: 25px;
+            border: 1px solid #e6ebf1;
+            border-radius: 18px;
+            background: #fbfdff;
+            transition: .25s;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(30,60,90,.08);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 13px;
+            background: #eaf7f7;
+            color: #008b91;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+            margin-bottom: 18px;
+        }
+
+        .feature h3 {
+            font-size: 16px;
+            margin-bottom: 9px;
+        }
+
+        .feature p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #7b8a9d;
+        }
+
+        /* STATS */
+
+        .stats {
+            padding: 35px 7%;
+            background: #14213d;
+            color: white;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            text-align: center;
+        }
+
+        .stat strong {
+            font-size: 28px;
+            display: block;
+        }
+
+        .stat span {
+            color: #aab6c7;
+            font-size: 12px;
+        }
+
+        /* FOOTER */
+
+        footer {
+            background: #0e1728;
+            color: #8e9caf;
+            text-align: center;
+            padding: 25px;
+            font-size: 13px;
+        }
+
+        /* MOBILE */
+
+        @media(max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 55px;
+            }
+
+            .feature-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 25px;
+            }
+        }
+
+        @media(max-width: 600px) {
+            .navbar {
+                padding: 0 5%;
+            }
+
+            .nav-links a:not(.nav-btn) {
+                display: none;
+            }
+
+            .hero {
+                padding-left: 5%;
+                padding-right: 5%;
+            }
+
+            .features {
+                padding-left: 5%;
+                padding-right: 5%;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 43px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- NAVIGATION -->
+
+<nav class="navbar">
+
+    <div class="logo">
+        <div class="logo-icon">
             <i class="bi bi-shield-check"></i>
-            Analyze Medicine
-          </a>
-          <a href="{{ url_for('camera_scan') }}" class="hero-btn-secondary">
-            <i class="bi bi-camera-video"></i>
-            Live QR Scan
-          </a>
         </div>
-
-        <!-- Trust bar -->
-        <div class="d-flex align-items-center gap-4 mt-4 pt-2">
-          <div class="text-white-50 small">
-            <i class="bi bi-shield-fill-check text-success me-1"></i>
-            94.3% Accuracy
-          </div>
-          <div class="text-white-50 small">
-            <i class="bi bi-translate me-1 text-info"></i>
-            EN + Kannada
-          </div>
-          <div class="text-white-50 small">
-            <i class="bi bi-database-check me-1 text-warning"></i>
-            MongoDB Atlas
-          </div>
-        </div>
-      </div>
-
-      <!-- Right: Visual Card -->
-      <div class="col-lg-6 hero-visual">
-        <div class="hero-card-main">
-          <div class="result-badge">✅ GENUINE</div>
-          <div class="medicine-name">Amoxicillin 500mg</div>
-          <div class="medicine-mfr">Cipla Ltd. &nbsp;·&nbsp; Batch BT2024A</div>
-
-          <div class="d-flex align-items-center gap-3 mb-1">
-            <div class="score-ring">
-              <span>92%</span>
-            </div>
-            <div>
-              <div class="text-white fw-bold mb-1" style="font-size:.9rem">Authenticity Score</div>
-              <div class="mini-bar-row">
-                <span class="mini-bar-label">AI Confidence</span>
-                <div class="mini-bar-track">
-                  <div class="mini-bar-fill" style="width:96%;background:#1A73E8"></div>
-                </div>
-                <span class="mini-bar-val">96%</span>
-              </div>
-              <div class="mini-bar-row">
-                <span class="mini-bar-label">OCR</span>
-                <div class="mini-bar-track">
-                  <div class="mini-bar-fill" style="width:87%;background:#00C896"></div>
-                </div>
-                <span class="mini-bar-val">87%</span>
-              </div>
-              <div class="mini-bar-row">
-                <span class="mini-bar-label">Packaging</span>
-                <div class="mini-bar-track">
-                  <div class="mini-bar-fill" style="width:81%;background:#F59E0B"></div>
-                </div>
-                <span class="mini-bar-val">81%</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,.1)">
-            <div style="color:rgba(255,255,255,.5);font-size:.75rem">
-              <i class="bi bi-calendar-check me-1 text-success"></i>
-              Expires Jun 2026 &nbsp;·&nbsp; 347 days remaining
-            </div>
-          </div>
-        </div>
-
-        <!-- Floating chips -->
-        <div class="floating-chip chip-1">
-          <span class="dot-green"></span> Low Risk
-        </div>
-        <div class="floating-chip chip-2">
-          <i class="bi bi-qr-code" style="color:#1A73E8"></i> QR Verified
-        </div>
-        <div class="floating-chip chip-3">
-          <i class="bi bi-translate" style="color:#F59E0B"></i> ಕನ್ನಡ
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════
-     LIVE STATS BAR
-══════════════════════════════════════════════════════════════ -->
-<section class="stats-band">
-  <div class="container">
-    <div class="row g-0">
-      <div class="col-6 col-md-3 border-end border-secondary">
-        <div class="stat-item">
-          <div class="stat-number text-white" id="stat-total">{{ stats.total }}</div>
-          <div class="stat-label">Total Scans</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3 border-end border-secondary">
-        <div class="stat-item">
-          <div class="stat-number" style="color:#00C896" id="stat-genuine">{{ stats.genuine }}</div>
-          <div class="stat-label">Genuine Detected</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3 border-end border-secondary">
-        <div class="stat-item">
-          <div class="stat-number text-danger" id="stat-counterfeit">{{ stats.counterfeit }}</div>
-          <div class="stat-label">Counterfeit Flagged</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="stat-item">
-          <div class="stat-number" style="color:#1A73E8" id="stat-avg">{{ stats.avg_score }}%</div>
-          <div class="stat-label">Avg Authenticity</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════
-     THE CRISIS
-══════════════════════════════════════════════════════════════ -->
-<section class="py-5 features-section">
-  <div class="container py-3">
-    <div class="crisis-banner mb-5">
-      <div class="row align-items-center g-4 position-relative">
-        <div class="col-md-4 text-center">
-          <div class="crisis-stat">1 in 5</div>
-          <div class="crisis-sub">medicines are fake in developing countries</div>
-        </div>
-        <div class="col-md-4 text-center">
-          <div class="crisis-stat">$200B</div>
-          <div class="crisis-sub">global counterfeit pharma market annually</div>
-        </div>
-        <div class="col-md-4 text-center">
-          <div class="crisis-stat">169K</div>
-          <div class="crisis-sub">children die annually from fake antibiotics</div>
-        </div>
-      </div>
+        Med<span>Secure</span> AI
     </div>
 
-    <!-- Features grid -->
-    <div class="text-center mb-5">
-      <span class="badge px-3 py-2 mb-2" style="background:#EFF6FF;color:#1A73E8;font-size:.82rem">
-        What We Detect
-      </span>
-      <h2 class="fw-bold fs-1 mb-2">Complete Protection Suite</h2>
-      <p class="text-muted" style="max-width:520px;margin:0 auto">
-        Six powerful AI modules working together to verify every aspect of medicine authenticity.
-      </p>
-    </div>
-
-    <div class="row g-4">
-
-      <div class="col-md-6 col-lg-4">
-        <div class="feature-card-new" style="--fc:#1A73E8">
-          <div class="feature-icon-wrap" style="background:#EFF6FF">
-            <i class="bi bi-eye" style="color:#1A73E8"></i>
-          </div>
-          <div class="feature-title">Visual AI Detection</div>
-          <div class="feature-desc">
-            MobileNetV2 transfer learning classifies medicine packaging as Genuine or
-            Counterfeit with 94.3% accuracy using deep visual pattern recognition.
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="feature-card-new" style="--fc:#0F9D58">
-          <div class="feature-icon-wrap" style="background:#F0FDF4">
-            <i class="bi bi-file-text" style="color:#0F9D58"></i>
-          </div>
-          <div class="feature-title">Bilingual OCR</div>
-          <div class="feature-desc">
-            EasyOCR reads medicine name, manufacturer, batch number, and expiry date
-            in both English and Kannada script automatically.
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="feature-card-new" style="--fc:#F59E0B">
-          <div class="feature-icon-wrap" style="background:#FFFBEB">
-            <i class="bi bi-qr-code-scan" style="color:#F59E0B"></i>
-          </div>
-          <div class="feature-title">QR & Barcode Scanner</div>
-          <div class="feature-desc">
-            Scan QR codes and barcodes from uploaded images or live camera.
-            Supports JSON, URL, GS1, and pipe-separated formats.
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="feature-card-new" style="--fc:#7C3AED">
-          <div class="feature-icon-wrap" style="background:#F5F3FF">
-            <i class="bi bi-calendar-x" style="color:#7C3AED"></i>
-          </div>
-          <div class="feature-title">Expiry Detection</div>
-          <div class="feature-desc">
-            Automatically extracts and validates expiry dates, calculates days
-            remaining, and flags expired medicines as high risk.
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="feature-card-new" style="--fc:#D93025">
-          <div class="feature-icon-wrap" style="background:#FEF2F2">
-            <i class="bi bi-graph-up" style="color:#D93025"></i>
-          </div>
-          <div class="feature-title">Authenticity Score</div>
-          <div class="feature-desc">
-            Combines AI confidence, OCR confidence, and packaging quality into
-            a weighted 0–100 score with Low / Medium / High risk classification.
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="feature-card-new" style="--fc:#0891B2">
-          <div class="feature-icon-wrap" style="background:#EFF9FC">
-            <i class="bi bi-file-earmark-pdf" style="color:#0891B2"></i>
-          </div>
-          <div class="feature-title">PDF Reports</div>
-          <div class="feature-desc">
-            Generate and download detailed PDF analysis reports with medicine
-            image, all scores, OCR results, and risk recommendation.
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════
-     HOW IT WORKS
-══════════════════════════════════════════════════════════════ -->
-<section class="steps-section py-5">
-  <div class="container py-3">
-    <div class="text-center mb-5">
-      <span class="badge px-3 py-2 mb-2" style="background:#F0FDF4;color:#0F9D58;font-size:.82rem">
-        Simple 3-Step Process
-      </span>
-      <h2 class="fw-bold fs-1">How It Works</h2>
-    </div>
-    <div class="row g-4 justify-content-center">
-      <div class="col-md-4">
-        <div class="step-card">
-          <div class="step-num">1</div>
-          <span class="step-icon">📸</span>
-          <div class="step-title">Upload or Scan</div>
-          <div class="step-desc">
-            Upload a photo of the medicine package, scan its QR code from an image,
-            or use the live camera scanner directly in your browser.
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="step-card">
-          <div class="step-num">2</div>
-          <span class="step-icon">🤖</span>
-          <div class="step-title">AI Analysis</div>
-          <div class="step-desc">
-            MobileNetV2 classifies the image, EasyOCR extracts text, and OpenCV
-            analyses packaging quality — all in under 5 seconds.
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="step-card">
-          <div class="step-num">3</div>
-          <span class="step-icon">📊</span>
-          <div class="step-title">Instant Results</div>
-          <div class="step-desc">
-            See prediction, authenticity score, risk level, and a recommendation.
-            Download a PDF report and store results in MongoDB Atlas.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════
-     CTA
-══════════════════════════════════════════════════════════════ -->
-<section class="cta-section py-5">
-  <div class="container py-3">
-    <div class="cta-card">
-      <div class="mb-4" style="font-size:3rem">🛡️</div>
-      <h2 class="text-white fw-bold fs-1 mb-3">
-        Ready to Verify a Medicine?
-      </h2>
-      <p class="mb-4" style="color:rgba(255,255,255,.6);max-width:480px;margin:0 auto 1.5rem">
-        Upload a medicine package image or scan its QR code right now.
-        Free, instant, and accurate.
-      </p>
-      <div class="d-flex flex-wrap gap-3 justify-content-center">
-        <a href="{{ url_for('upload') }}" class="hero-btn-primary" style="font-size:.95rem">
-          <i class="bi bi-shield-check"></i>
-          Analyze a Medicine
+    <div class="nav-links">
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('history') }}">History</a>
+        <a href="{{ url_for('search') }}">Search</a>
+        <a href="{{ url_for('upload') }}" class="nav-btn">
+            <i class="bi bi-camera"></i> Scan Medicine
         </a>
-        <a href="{{ url_for('camera_scan') }}" class="hero-btn-secondary" style="font-size:.95rem">
-          <i class="bi bi-camera-video"></i>
-          Open Live Scanner
-        </a>
-        <a href="{{ url_for('history') }}" class="hero-btn-secondary" style="font-size:.95rem">
-          <i class="bi bi-clock-history"></i>
-          View History
-        </a>
-      </div>
     </div>
-  </div>
+
+</nav>
+
+
+<!-- HERO -->
+
+<section class="hero">
+
+    <div>
+
+        <div class="badge">
+            <i class="bi bi-stars"></i>
+            AI-POWERED MEDICINE SECURITY
+        </div>
+
+        <h1>
+            Verify your medicine with
+            <span class="gradient">AI.</span>
+        </h1>
+
+        <p class="hero-text">
+            MedSecure AI analyzes medicine images, packaging,
+            barcodes, expiry information and other details to help
+            identify suspicious or counterfeit medicines.
+        </p>
+
+        <div class="hero-buttons">
+
+            <a href="{{ url_for('upload') }}" class="primary-btn">
+                <i class="bi bi-shield-check"></i>
+                Analyze Medicine
+            </a>
+
+            <a href="{{ url_for('history') }}" class="secondary-btn">
+                <i class="bi bi-clock-history"></i>
+                View History
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- AI VISUAL -->
+
+    <div class="visual">
+
+        <div class="scan-card">
+
+            <div class="scan-header">
+
+                <div class="scan-title">
+                    <i class="bi bi-cpu"></i>
+                    AI Medicine Scanner
+                </div>
+
+                <div class="live">
+                    ● AI READY
+                </div>
+
+            </div>
+
+
+            <div class="medicine-box">
+
+                <div class="medicine"></div>
+
+                <div class="scan-line"></div>
+
+            </div>
+
+
+            <div class="scan-status">
+
+                <div class="check">
+                    <i class="bi bi-check-lg"></i>
+                </div>
+
+                <div class="status-text">
+                    <strong>AI Scanner Ready</strong>
+                    <small>Upload a medicine image to begin analysis</small>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </section>
 
-{% endblock %}
 
-{% block scripts %}
-<script>
-setInterval(async () => {
-  try {
-    const r = await fetch('/api/stats');
-    const s = await r.json();
-    document.getElementById('stat-total').textContent      = s.total;
-    document.getElementById('stat-genuine').textContent    = s.genuine;
-    document.getElementById('stat-counterfeit').textContent= s.counterfeit;
-    document.getElementById('stat-avg').textContent        = s.avg_score + '%';
-  } catch(e) {}
-}, 60000);
-</script>
-{% endblock %}
+<!-- FEATURES -->
+
+<section class="features">
+
+    <div class="section-heading">
+
+        <h2>One scan. Multiple checks.</h2>
+
+        <p>
+            MedSecure AI combines multiple technologies to analyze
+            medicine information from a single image.
+        </p>
+
+    </div>
+
+
+    <div class="feature-grid">
+
+        <div class="feature">
+
+            <div class="feature-icon">
+                <i class="bi bi-cpu"></i>
+            </div>
+
+            <h3>AI Detection</h3>
+
+            <p>
+                Analyze medicine images using an AI-based
+                classification model.
+            </p>
+
+        </div>
+
+
+        <div class="feature">
+
+            <div class="feature-icon">
+                <i class="bi bi-upc-scan"></i>
+            </div>
+
+            <h3>Barcode Scan</h3>
+
+            <p>
+                Extract and validate medicine barcode information.
+            </p>
+
+        </div>
+
+
+        <div class="feature">
+
+            <div class="feature-icon">
+                <i class="bi bi-file-text"></i>
+            </div>
+
+            <h3>OCR Analysis</h3>
+
+            <p>
+                Extract medicine name, batch number and other
+                text using OCR.
+            </p>
+
+        </div>
+
+
+        <div class="feature">
+
+            <div class="feature-icon">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+
+            <h3>Expiry Check</h3>
+
+            <p>
+                Check manufacturing and expiry information
+                from the package.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- STATS -->
+
+<section class="stats">
+
+    <div class="stat">
+        <strong>AI</strong>
+        <span>Image Analysis</span>
+    </div>
+
+    <div class="stat">
+        <strong>OCR</strong>
+        <span>Text Extraction</span>
+    </div>
+
+    <div class="stat">
+        <strong>QR</strong>
+        <span>Code Detection</span>
+    </div>
+
+    <div class="stat">
+        <strong>PDF</strong>
+        <span>Reports</span>
+    </div>
+
+</section>
+
+
+<!-- FOOTER -->
+
+<footer>
+
+    <i class="bi bi-shield-lock"></i>
+    MedSecure AI — AI-powered medicine verification system
+
+</footer>
+
+</body>
+</html>

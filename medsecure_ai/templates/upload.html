@@ -1,167 +1,620 @@
-{% extends "base.html" %}
-{% block title %}MedSecure AI — Analyze Medicine{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-{% block content %}
-<section class="py-5">
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-lg-7">
+    <title>Analyze Medicine | MedSecure AI</title>
 
-        <!-- Header -->
-        <div class="text-center mb-4">
-          <span class="badge bg-primary-soft text-primary px-3 py-2 mb-2">
-            <i class="bi bi-cloud-upload me-1"></i>Step 1 of 1
-          </span>
-          <h2 class="fw-bold">Upload Medicine Package</h2>
-          <p class="text-muted">Take a clear photo of the medicine package label and upload it below.</p>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f8f7;
+            color: #17221e;
+        }
+
+        .navbar {
+            height: 70px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 7%;
+        }
+
+        .logo {
+            color: #087f5b;
+            font-size: 21px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #555;
+            margin-left: 25px;
+            font-size: 14px;
+        }
+
+        .container {
+            width: 92%;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .heading {
+            text-align: center;
+            padding: 45px 0 30px;
+        }
+
+        .heading h1 {
+            font-size: 40px;
+            color: #123b2e;
+            margin-bottom: 10px;
+        }
+
+        .heading p {
+            color: #697872;
+        }
+
+        .main {
+            display: grid;
+            grid-template-columns: 1.5fr 0.8fr;
+            gap: 25px;
+            padding-bottom: 50px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid #e0e8e4;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        }
+
+        .card h2 {
+            margin-bottom: 8px;
+            color: #123b2e;
+        }
+
+        .subtitle {
+            color: #7a8781;
+            font-size: 14px;
+            margin-bottom: 22px;
+        }
+
+        .upload-box {
+            border: 2px dashed #9dcbbb;
+            background: #f8fcfa;
+            border-radius: 18px;
+            padding: 55px 20px;
+            text-align: center;
+        }
+
+        .upload-box i {
+            font-size: 50px;
+            color: #087f5b;
+        }
+
+        .upload-box h3 {
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+
+        .upload-box p {
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        .choose-btn {
+            display: inline-block;
+            background: #087f5b;
+            color: white;
+            padding: 12px 22px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        #preview {
+            display: none;
+            max-width: 100%;
+            max-height: 280px;
+            margin: auto;
+            border-radius: 12px;
+        }
+
+        .filename {
+            margin-top: 12px;
+            color: #087f5b;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .field {
+            margin-top: 22px;
+        }
+
+        .field label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        select {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #d5dfdb;
+            border-radius: 10px;
+            background: white;
+            font-size: 14px;
+        }
+
+        .location-box {
+            margin-top: 22px;
+            padding: 18px;
+            background: #f6fbf8;
+            border: 1px solid #dcebe4;
+            border-radius: 15px;
+        }
+
+        .location-box h3 {
+            margin-bottom: 6px;
+            font-size: 16px;
+        }
+
+        .location-box p {
+            color: #77847e;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .location-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #087f5b;
+            background: white;
+            color: #087f5b;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .location-status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #68766f;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            margin-top: 22px;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: #087f5b;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .analyze-btn:hover {
+            background: #066c4d;
+        }
+
+        .side {
+            line-height: 1.7;
+        }
+
+        .side h2 {
+            color: #123b2e;
+            margin-bottom: 15px;
+        }
+
+        .feature {
+            padding: 14px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .feature strong {
+            display: block;
+            color: #087f5b;
+        }
+
+        .feature span {
+            color: #777;
+            font-size: 13px;
+        }
+
+        footer {
+            background: white;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            padding: 20px;
+            color: #777;
+            font-size: 12px;
+        }
+
+        @media(max-width: 800px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .heading h1 {
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+
+    <a href="{{ url_for('index') }}" class="logo">
+        🛡️ MedSecure AI
+    </a>
+
+    <div class="nav-links">
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('history') }}">History</a>
+        <a href="{{ url_for('search') }}">Search</a>
+    </div>
+
+</nav>
+
+
+<div class="container">
+
+    <div class="heading">
+        <h1>Analyze Your Medicine</h1>
+        <p>
+            Upload a medicine image and let MedSecure AI verify it.
+        </p>
+    </div>
+
+
+    <div class="main">
+
+        <!-- UPLOAD CARD -->
+        <div class="card">
+
+            <h2>Medicine Image</h2>
+
+            <p class="subtitle">
+                Upload a clear image of the medicine package.
+            </p>
+
+
+            <!-- IMPORTANT FORM -->
+            <form
+                action="{{ url_for('analyze') }}"
+                method="POST"
+                enctype="multipart/form-data"
+            >
+
+                <div class="upload-box">
+
+                    <div id="uploadContent">
+
+                        <div style="font-size:50px;">
+                            💊
+                        </div>
+
+                        <h3>
+                            Upload Medicine Image
+                        </h3>
+
+                        <p>
+                            JPG, JPEG, PNG, WEBP or BMP
+                        </p>
+
+                        <label
+                            for="imageInput"
+                            class="choose-btn"
+                        >
+                            Choose Image
+                        </label>
+
+                    </div>
+
+
+                    <img
+                        id="preview"
+                        src=""
+                        alt="Medicine Preview"
+                    >
+
+                </div>
+
+
+                <input
+                    type="file"
+                    id="imageInput"
+                    name="image"
+                    accept=".jpg,.jpeg,.png,.webp,.bmp"
+                    required
+                >
+
+
+                <div
+                    id="filename"
+                    class="filename"
+                ></div>
+
+
+                <!-- LANGUAGE -->
+                <div class="field">
+
+                    <label for="language">
+                        Result Language
+                    </label>
+
+                    <select
+                        name="language"
+                        id="language"
+                    >
+                        <option value="en">
+                            English
+                        </option>
+
+                        <option value="kn">
+                            Kannada
+                        </option>
+
+                        <option value="hi">
+                            Hindi
+                        </option>
+
+                        <option value="ta">
+                            Tamil
+                        </option>
+
+                        <option value="te">
+                            Telugu
+                        </option>
+                    </select>
+
+                </div>
+
+
+                <!-- LOCATION -->
+                <div class="location-box">
+
+                    <h3>
+                        📍 Verification Location
+                    </h3>
+
+                    <p>
+                        Save the location where the medicine is analyzed.
+                    </p>
+
+                    <button
+                        type="button"
+                        class="location-btn"
+                        id="locationBtn"
+                    >
+                        Use My Location
+                    </button>
+
+                    <div
+                        class="location-status"
+                        id="locationStatus"
+                    >
+                        Location not selected
+                    </div>
+
+                    <input
+                        type="hidden"
+                        name="latitude"
+                        id="latitude"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="longitude"
+                        id="longitude"
+                    >
+
+                </div>
+
+
+                <!-- ANALYZE -->
+                <button
+                    type="submit"
+                    class="analyze-btn"
+                >
+                    🔍 Analyze Medicine
+                </button>
+
+            </form>
+
         </div>
 
-        <!-- Upload Card -->
-        <div class="card border-0 shadow-sm rounded-4 p-4">
-          <form id="uploadForm" action="{{ url_for('analyze') }}" method="POST" enctype="multipart/form-data">
 
-            <!-- Language selection -->
-            <div class="mb-4">
-              <label class="form-label fw-semibold">
-                <i class="bi bi-translate me-1 text-primary"></i>Select Language
-              </label>
-              <div class="d-flex gap-3">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="language" id="lang-en" value="en" checked>
-                  <label class="form-check-label" for="lang-en">English</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="language" id="lang-kn" value="kn">
-                  <label class="form-check-label" for="lang-kn">ಕನ್ನಡ (Kannada)</label>
-                </div>
-              </div>
+        <!-- INFORMATION CARD -->
+        <div class="card side">
+
+            <h2>
+                AI Verification
+            </h2>
+
+            <p>
+                MedSecure AI analyzes your medicine image using
+                artificial intelligence and supporting verification
+                information.
+            </p>
+
+
+            <div class="feature">
+                <strong>AI Image Analysis</strong>
+                <span>
+                    Detects visual patterns from the medicine image.
+                </span>
             </div>
 
-            <!-- Drop zone -->
-            <div class="mb-4">
-              <label class="form-label fw-semibold">
-                <i class="bi bi-image me-1 text-primary"></i>Medicine Package Image
-              </label>
-              <div id="dropZone" class="drop-zone rounded-4 border-2 border-dashed p-5 text-center"
-                   onclick="document.getElementById('imageInput').click()">
-                <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-75 mb-3 d-block"></i>
-                <p class="mb-1 fw-semibold">Click to upload or drag & drop</p>
-                <p class="text-muted small mb-0">PNG, JPG, WebP — Max 10 MB</p>
-              </div>
-              <input type="file" id="imageInput" name="image" accept=".jpg,.jpeg,.png,.webp,.bmp"
-                     class="d-none" required>
+
+            <div class="feature">
+                <strong>OCR Analysis</strong>
+                <span>
+                    Extracts medicine name, batch and expiry details.
+                </span>
             </div>
 
-            <!-- Image preview -->
-            <div id="previewSection" class="mb-4 d-none">
-              <label class="form-label fw-semibold text-success">
-                <i class="bi bi-check-circle me-1"></i>Selected Image
-              </label>
-              <div class="text-center">
-                <img id="previewImg" src="#" alt="Preview"
-                     class="img-fluid rounded-3 shadow-sm" style="max-height:280px">
-                <div id="previewName" class="text-muted small mt-2"></div>
-              </div>
+
+            <div class="feature">
+                <strong>Barcode / QR</strong>
+                <span>
+                    Supports medicine identification.
+                </span>
             </div>
 
-            <!-- Tips -->
-            <div class="alert alert-info border-0 rounded-3 mb-4 small">
-              <i class="bi bi-lightbulb me-2"></i>
-              <strong>Tips for best results:</strong>
-              Ensure the label is fully visible, well-lit, and in focus.
-              Include the expiry date, batch number, and manufacturer name in frame.
+
+            <div class="feature">
+                <strong>Expiry Verification</strong>
+                <span>
+                    Checks available expiry information.
+                </span>
             </div>
 
-            <!-- Submit -->
-            <div class="d-grid">
-              <button type="submit" id="analyzeBtn" class="btn btn-primary btn-lg rounded-3" disabled>
-                <i class="bi bi-shield-check me-2"></i>Analyze Medicine
-              </button>
-            </div>
-
-          </form>
         </div>
 
-      </div>
     </div>
-  </div>
-</section>
 
-<!-- Processing overlay -->
-<div id="processingOverlay" class="processing-overlay d-none">
-  <div class="text-center text-white">
-    <div class="spinner-border mb-3" style="width:3rem;height:3rem"></div>
-    <h4 class="fw-bold mb-2">Analyzing Medicine...</h4>
-    <p id="processingStep" class="text-white-50">Running AI model...</p>
-    <div class="progress mt-3" style="width:300px">
-      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
-           style="width:10%"></div>
-    </div>
-  </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+
+<footer>
+    © 2026 MedSecure AI · AI-powered medicine verification
+</footer>
+
+
 <script>
-const dropZone   = document.getElementById('dropZone');
-const imageInput = document.getElementById('imageInput');
-const previewSection = document.getElementById('previewSection');
-const previewImg = document.getElementById('previewImg');
-const previewName = document.getElementById('previewName');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const overlay    = document.getElementById('processingOverlay');
-const progBar    = document.getElementById('progressBar');
-const progStep   = document.getElementById('processingStep');
 
-// Drag-and-drop
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) setFile(file);
-});
+const imageInput = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const uploadContent = document.getElementById("uploadContent");
+const filename = document.getElementById("filename");
 
-imageInput.addEventListener('change', e => {
-  if (e.target.files[0]) setFile(e.target.files[0]);
-});
 
-function setFile(file) {
-  // Update the input so FormData picks it up
-  const dt = new DataTransfer();
-  dt.items.add(file);
-  imageInput.files = dt.files;
+// IMAGE PREVIEW
 
-  // Show preview
-  const reader = new FileReader();
-  reader.onload = e => { previewImg.src = e.target.result; };
-  reader.readAsDataURL(file);
-  previewName.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
-  previewSection.classList.remove('d-none');
-  analyzeBtn.disabled = false;
-  dropZone.style.borderColor = 'var(--bs-primary)';
-}
+imageInput.addEventListener("change", function() {
 
-// Progress simulation during analysis
-document.getElementById('uploadForm').addEventListener('submit', () => {
-  overlay.classList.remove('d-none');
-  const steps = [
-    [20, 'Preprocessing image with OpenCV...'],
-    [40, 'Running EasyOCR extraction...'],
-    [60, 'Analyzing packaging quality...'],
-    [80, 'Running MobileNetV2 inference...'],
-    [95, 'Computing authenticity score...'],
-  ];
-  let i = 0;
-  const interval = setInterval(() => {
-    if (i < steps.length) {
-      progBar.style.width = steps[i][0] + '%';
-      progStep.textContent = steps[i][1];
-      i++;
-    } else {
-      clearInterval(interval);
+    const file = this.files[0];
+
+    if (!file) {
+        return;
     }
-  }, 1200);
+
+    if (file.size > 10 * 1024 * 1024) {
+
+        alert("Image must be less than 10 MB.");
+
+        this.value = "";
+
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        preview.src = event.target.result;
+
+        preview.style.display = "block";
+
+        uploadContent.style.display = "none";
+
+        filename.textContent =
+            "Selected image: " + file.name;
+
+    };
+
+    reader.readAsDataURL(file);
+
 });
+
+
+// LOCATION
+
+document
+    .getElementById("locationBtn")
+    .addEventListener("click", function() {
+
+        const status =
+            document.getElementById("locationStatus");
+
+        if (!navigator.geolocation) {
+
+            status.textContent =
+                "Geolocation is not supported.";
+
+            return;
+        }
+
+        status.textContent =
+            "Getting your location...";
+
+        navigator.geolocation.getCurrentPosition(
+
+            function(position) {
+
+                const lat =
+                    position.coords.latitude;
+
+                const lon =
+                    position.coords.longitude;
+
+                document.getElementById("latitude").value =
+                    lat;
+
+                document.getElementById("longitude").value =
+                    lon;
+
+                status.textContent =
+                    "✓ Location captured successfully.";
+
+            },
+
+            function(error) {
+
+                if (error.code === 1) {
+
+                    status.textContent =
+                        "Location permission was denied.";
+
+                } else {
+
+                    status.textContent =
+                        "Unable to get location.";
+
+                }
+
+            }
+
+        );
+
+    });
+
 </script>
-{% endblock %}
+
+</body>
+</html>

@@ -5,12 +5,14 @@ Handles all CRUD operations for medicine reports
 """
 
 import os
+import logging
 from datetime import datetime
+from typing import Optional, List, Dict
 
 from pymongo import MongoClient, DESCENDING
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from dotenv import load_dotenv
-import logging
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -103,7 +105,7 @@ class MedSecureDB:
     # CREATE
     # ─────────────────────────────────────────────
 
-    def insert_report(self, report: dict) -> str | None:
+    def insert_report(self, report: dict) -> Optional[str]:
         """
         Insert a new medicine analysis report.
 
@@ -150,7 +152,7 @@ class MedSecureDB:
     def get_report_by_id(
         self,
         report_id: str
-    ) -> dict | None:
+    ) -> Optional[dict]:
 
         """
         Fetch a single report by MongoDB ObjectId string.
@@ -195,9 +197,9 @@ class MedSecureDB:
     def get_all_reports(
         self,
         limit: int = 50,
-        prediction: str | None = None,
-        risk_level: str | None = None,
-    ) -> list[dict]:
+        prediction: Optional[str] = None,
+        risk_level: Optional[str] = None,
+    ) -> List[dict]:
 
         """
         Retrieve the most recent reports.
@@ -260,8 +262,8 @@ class MedSecureDB:
     def search_reports(
         self,
         query: str,
-        prediction: str | None = None
-    ) -> list[dict]:
+        prediction: Optional[str] = None
+    ) -> List[dict]:
 
         """
         Search reports by:
@@ -480,7 +482,10 @@ class MedSecureDB:
                 )
             )
 
-            if avg_result and avg_result[0].get("avg") is not None:
+            if (
+                avg_result
+                and avg_result[0].get("avg") is not None
+            ):
 
                 avg_score = round(
                     avg_result[0]["avg"],
