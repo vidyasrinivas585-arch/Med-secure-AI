@@ -13,9 +13,10 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-MODEL_PATH     = os.path.join("trained_model", "medicine_classifier.keras")
-MODEL_PATH_H5  = os.path.join("trained_model", "medicine_classifier.h5")
-CLASS_IDX_PATH = os.path.join("trained_model", "class_indices.json")
+BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH     = os.path.join(BASE_DIR, "trained_model", "medicine_classifier_fixed3.keras")
+MODEL_PATH_H5  = os.path.join(BASE_DIR, "trained_model", "medicine_classifier.h5")
+CLASS_IDX_PATH = os.path.join(BASE_DIR, "trained_model", "class_indices.json")
 
 W_AI        = 0.70
 W_OCR       = 0.15

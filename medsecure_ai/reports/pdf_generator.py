@@ -26,7 +26,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 logger = logging.getLogger(__name__)
 
-REPORT_DIR = os.path.join("static", "reports")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPORT_DIR = os.path.join(BASE_DIR, "static", "reports")
 os.makedirs(REPORT_DIR, exist_ok=True)
 
 # Brand colours
