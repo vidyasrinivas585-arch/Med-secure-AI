@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 TESSERACT_PATHS = [
+    "/opt/homebrew/bin/tesseract",
+    "/usr/local/bin/tesseract",
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
     "tesseract",
