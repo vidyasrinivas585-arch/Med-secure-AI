@@ -1,501 +1,362 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "base.html" %}
 
-    <title>MedSecure AI | Medicine Verification</title>
+{% block title %}MedSecure AI | Medicine Verification{% endblock %}
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+{% block head %}
+<style>
+    .home-hero {
+        min-height: 620px;
+        padding: 80px 0 70px;
+        display: grid;
+        grid-template-columns: 1.05fr .95fr;
+        align-items: center;
+        gap: 70px;
+        background:
+            radial-gradient(circle at 85% 15%, rgba(0,166,166,.12), transparent 30%),
+            radial-gradient(circle at 10% 70%, rgba(23,105,170,.08), transparent 28%);
+    }
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+    .home-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #e7f7f6;
+        color: #087c80;
+        border: 1px solid #ccefed;
+        padding: 8px 14px;
+        border-radius: 30px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 22px;
+    }
+
+    .home-title {
+        font-size: clamp(42px, 5vw, 68px);
+        line-height: 1.05;
+        letter-spacing: -2.5px;
+        margin-bottom: 24px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 800;
+    }
+
+    .home-gradient {
+        background: linear-gradient(90deg, #1769aa, #00a6a6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .home-text {
+        font-size: 18px;
+        line-height: 1.7;
+        color: #68788f;
+        max-width: 590px;
+        margin-bottom: 32px;
+    }
+
+    .home-buttons {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .home-primary-btn {
+        text-decoration: none;
+        background: linear-gradient(135deg, #1769aa, #00a6a6);
+        color: white;
+        padding: 15px 24px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        display: inline-flex;
+        gap: 9px;
+        align-items: center;
+        box-shadow: 0 12px 25px rgba(0,140,160,.22);
+    }
+
+    .home-primary-btn:hover {
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .home-secondary-btn {
+        text-decoration: none;
+        color: #253858;
+        background: white;
+        border: 1px solid #dfe6ef;
+        padding: 15px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+    }
+
+    .home-secondary-btn:hover {
+        color: #1769aa;
+        border-color: #1769aa;
+    }
+
+    .scanner-card {
+        background: rgba(255,255,255,.92);
+        border: 1px solid #e2e9f1;
+        border-radius: 28px;
+        padding: 25px;
+        box-shadow: 0 30px 70px rgba(31,55,80,.12);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .scanner-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .scanner-title {
+        font-weight: 800;
+    }
+
+    .scanner-live {
+        background: #eaf9f1;
+        color: #17824d;
+        border-radius: 20px;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .medicine-box {
+        height: 290px;
+        margin: 22px 0;
+        border-radius: 20px;
+        background: linear-gradient(145deg, #edf7fa, #f8fbfd);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        border: 1px dashed #b9cbd9;
+    }
+
+    .medicine {
+        width: 180px;
+        height: 80px;
+        background: linear-gradient(90deg, #fff 50%, #29a7a8 50%);
+        border-radius: 50px;
+        transform: rotate(-18deg);
+        box-shadow: 0 20px 30px rgba(24,65,85,.2);
+        position: relative;
+    }
+
+    .medicine::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background: #d3dce4;
+    }
+
+    .scan-line {
+        position: absolute;
+        width: 80%;
+        height: 2px;
+        background: #00a6a6;
+        box-shadow: 0 0 12px #00a6a6;
+        animation: homeScan 2.5s infinite;
+    }
+
+    @keyframes homeScan {
+        0%,100% {
+            top: 22%;
+        }
+        50% {
+            top: 76%;
+        }
+    }
+
+    .scanner-status {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        background: #f7fafc;
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .scanner-check {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #e7f8f0;
+        color: #16854d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scanner-status strong {
+        display: block;
+        font-size: 14px;
+    }
+
+    .scanner-status small {
+        color: #8190a3;
+    }
+
+    .home-features {
+        background: white;
+        padding: 70px 0;
+    }
+
+    .home-section-heading {
+        text-align: center;
+        max-width: 650px;
+        margin: auto;
+    }
+
+    .home-section-heading h2 {
+        font-size: 36px;
+        margin-bottom: 13px;
+    }
+
+    .home-section-heading p {
+        color: #74849a;
+        line-height: 1.6;
+    }
+
+    .home-feature-grid {
+        margin-top: 45px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+    }
+
+    .home-feature {
+        padding: 25px;
+        border: 1px solid #e6ebf1;
+        border-radius: 18px;
+        background: #fbfdff;
+        transition: .25s;
+    }
+
+    .home-feature:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(30,60,90,.08);
+    }
+
+    .home-feature-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 13px;
+        background: #eaf7f7;
+        color: #008b91;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 21px;
+        margin-bottom: 18px;
+    }
+
+    .home-feature h3 {
+        font-size: 16px;
+        margin-bottom: 9px;
+    }
+
+    .home-feature p {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #7b8a9d;
+    }
+
+    .home-stats {
+        padding: 35px 0;
+        background: #14213d;
+        color: white;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        text-align: center;
+    }
+
+    .home-stat strong {
+        font-size: 28px;
+        display: block;
+    }
+
+    .home-stat span {
+        color: #aab6c7;
+        font-size: 12px;
+    }
+
+    @media(max-width: 900px) {
+        .home-hero {
+            grid-template-columns: 1fr;
+            padding: 55px 0;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f5f8fc;
-            color: #14213d;
+        .home-feature-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
 
-        /* NAVBAR */
+        .home-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+    }
 
-        .navbar {
-            height: 72px;
-            background: rgba(255,255,255,0.95);
-            border-bottom: 1px solid #e6ebf2;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 7%;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+    @media(max-width: 600px) {
+        .home-feature-grid {
+            grid-template-columns: 1fr;
         }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 21px;
-            font-weight: 800;
-            color: #172b4d;
+        .home-title {
+            font-size: 43px;
         }
 
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #1769aa, #00a6a6);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 21px;
-            box-shadow: 0 8px 20px rgba(23,105,170,.2);
+        .home-stats {
+            grid-template-columns: 1fr 1fr;
         }
+    }
+</style>
+{% endblock %}
 
-        .logo span {
-            color: #168c9b;
-        }
 
-        .nav-links {
-            display: flex;
-            gap: 28px;
-            align-items: center;
-        }
+{% block content %}
 
-        .nav-links a {
-            text-decoration: none;
-            color: #65758b;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .nav-links a:hover {
-            color: #168c9b;
-        }
-
-        .nav-btn {
-            background: #14213d;
-            color: white !important;
-            padding: 11px 18px;
-            border-radius: 10px;
-        }
-
-        /* HERO */
-
-        .hero {
-            min-height: 620px;
-            padding: 80px 7% 70px;
-            display: grid;
-            grid-template-columns: 1.05fr .95fr;
-            align-items: center;
-            gap: 70px;
-            background:
-                radial-gradient(circle at 85% 15%, rgba(0,166,166,.12), transparent 30%),
-                radial-gradient(circle at 10% 70%, rgba(23,105,170,.08), transparent 28%);
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: #e7f7f6;
-            color: #087c80;
-            border: 1px solid #ccefed;
-            padding: 8px 14px;
-            border-radius: 30px;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 22px;
-        }
-
-        .badge i {
-            font-size: 14px;
-        }
-
-        h1 {
-            font-size: clamp(42px, 5vw, 68px);
-            line-height: 1.05;
-            letter-spacing: -2.5px;
-            margin-bottom: 24px;
-        }
-
-        h1 .gradient {
-            background: linear-gradient(90deg, #1769aa, #00a6a6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero-text {
-            font-size: 18px;
-            line-height: 1.7;
-            color: #68788f;
-            max-width: 590px;
-            margin-bottom: 32px;
-        }
-
-        .hero-buttons {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
-
-        .primary-btn {
-            border: none;
-            text-decoration: none;
-            background: linear-gradient(135deg, #1769aa, #00a6a6);
-            color: white;
-            padding: 15px 24px;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            display: inline-flex;
-            gap: 9px;
-            align-items: center;
-            box-shadow: 0 12px 25px rgba(0,140,160,.22);
-            cursor: pointer;
-        }
-
-        .secondary-btn {
-            text-decoration: none;
-            color: #253858;
-            background: white;
-            border: 1px solid #dfe6ef;
-            padding: 15px 24px;
-            border-radius: 12px;
-            font-weight: 700;
-        }
-
-        /* MEDICINE CARD */
-
-        .visual {
-            position: relative;
-        }
-
-        .scan-card {
-            background: rgba(255,255,255,.88);
-            border: 1px solid #e2e9f1;
-            border-radius: 28px;
-            padding: 25px;
-            box-shadow: 0 30px 70px rgba(31,55,80,.12);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .scan-card::before {
-            content: "";
-            position: absolute;
-            width: 220px;
-            height: 220px;
-            background: #dff8f6;
-            border-radius: 50%;
-            right: -80px;
-            top: -90px;
-        }
-
-        .scan-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-        }
-
-        .scan-title {
-            font-weight: 800;
-        }
-
-        .live {
-            background: #eaf9f1;
-            color: #17824d;
-            border-radius: 20px;
-            padding: 6px 10px;
-            font-size: 11px;
-            font-weight: 800;
-        }
-
-        .medicine-box {
-            height: 290px;
-            margin: 22px 0;
-            border-radius: 20px;
-            background: linear-gradient(145deg, #edf7fa, #f8fbfd);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            border: 1px dashed #b9cbd9;
-        }
-
-        .medicine {
-            width: 180px;
-            height: 80px;
-            background: linear-gradient(90deg, #fff 50%, #29a7a8 50%);
-            border-radius: 50px;
-            transform: rotate(-18deg);
-            box-shadow: 0 20px 30px rgba(24,65,85,.2);
-            position: relative;
-        }
-
-        .medicine::after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            top: 0;
-            height: 100%;
-            width: 2px;
-            background: #d3dce4;
-        }
-
-        .scan-line {
-            position: absolute;
-            width: 80%;
-            height: 2px;
-            background: #00a6a6;
-            box-shadow: 0 0 12px #00a6a6;
-            animation: scan 2.5s infinite;
-        }
-
-        @keyframes scan {
-            0%,100% { top: 22%; }
-            50% { top: 76%; }
-        }
-
-        .scan-status {
-            display: flex;
-            align-items: center;
-            gap: 13px;
-            background: #f7fafc;
-            padding: 14px;
-            border-radius: 14px;
-        }
-
-        .check {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: #e7f8f0;
-            color: #16854d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .status-text strong {
-            display: block;
-            font-size: 14px;
-        }
-
-        .status-text small {
-            color: #8190a3;
-        }
-
-        /* FEATURES */
-
-        .features {
-            background: white;
-            padding: 70px 7%;
-        }
-
-        .section-heading {
-            text-align: center;
-            max-width: 650px;
-            margin: auto;
-        }
-
-        .section-heading h2 {
-            font-size: 36px;
-            margin-bottom: 13px;
-        }
-
-        .section-heading p {
-            color: #74849a;
-            line-height: 1.6;
-        }
-
-        .feature-grid {
-            margin-top: 45px;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-        }
-
-        .feature {
-            padding: 25px;
-            border: 1px solid #e6ebf1;
-            border-radius: 18px;
-            background: #fbfdff;
-            transition: .25s;
-        }
-
-        .feature:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(30,60,90,.08);
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 13px;
-            background: #eaf7f7;
-            color: #008b91;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 21px;
-            margin-bottom: 18px;
-        }
-
-        .feature h3 {
-            font-size: 16px;
-            margin-bottom: 9px;
-        }
-
-        .feature p {
-            font-size: 13px;
-            line-height: 1.6;
-            color: #7b8a9d;
-        }
-
-        /* STATS */
-
-        .stats {
-            padding: 35px 7%;
-            background: #14213d;
-            color: white;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            text-align: center;
-        }
-
-        .stat strong {
-            font-size: 28px;
-            display: block;
-        }
-
-        .stat span {
-            color: #aab6c7;
-            font-size: 12px;
-        }
-
-        /* FOOTER */
-
-        footer {
-            background: #0e1728;
-            color: #8e9caf;
-            text-align: center;
-            padding: 25px;
-            font-size: 13px;
-        }
-
-        /* MOBILE */
-
-        @media(max-width: 900px) {
-            .hero {
-                grid-template-columns: 1fr;
-                padding-top: 55px;
-            }
-
-            .feature-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 25px;
-            }
-        }
-
-        @media(max-width: 600px) {
-            .navbar {
-                padding: 0 5%;
-            }
-
-            .nav-links a:not(.nav-btn) {
-                display: none;
-            }
-
-            .hero {
-                padding-left: 5%;
-                padding-right: 5%;
-            }
-
-            .features {
-                padding-left: 5%;
-                padding-right: 5%;
-            }
-
-            .feature-grid {
-                grid-template-columns: 1fr;
-            }
-
-            h1 {
-                font-size: 43px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-<!-- NAVIGATION -->
-
-<nav class="navbar">
-
-    <div class="logo">
-        <div class="logo-icon">
-            <i class="bi bi-shield-check"></i>
-        </div>
-        Med<span>Secure</span> AI
-    </div>
-
-    <div class="nav-links">
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('history') }}">History</a>
-        <a href="{{ url_for('search') }}">Search</a>
-        <a href="{{ url_for('upload') }}" class="nav-btn">
-            <i class="bi bi-camera"></i> Scan Medicine
-        </a>
-    </div>
-
-</nav>
-
-
-<!-- HERO -->
-
-<section class="hero">
+<!-- HOME HERO -->
+<section class="home-hero">
 
     <div>
 
-        <div class="badge">
+        <div class="home-badge">
             <i class="bi bi-stars"></i>
             AI-POWERED MEDICINE SECURITY
         </div>
 
-        <h1>
+        <h1 class="home-title">
             Verify your medicine with
-            <span class="gradient">AI.</span>
+            <span class="home-gradient">AI.</span>
         </h1>
 
-        <p class="hero-text">
+        <p class="home-text">
             MedSecure AI analyzes medicine images, packaging,
             barcodes, expiry information and other details to help
             identify suspicious or counterfeit medicines.
         </p>
 
-        <div class="hero-buttons">
+        <div class="home-buttons">
 
-            <a href="{{ url_for('upload') }}" class="primary-btn">
+            <a href="{{ url_for('upload') }}"
+               class="home-primary-btn">
+
                 <i class="bi bi-shield-check"></i>
                 Analyze Medicine
+
             </a>
 
-            <a href="{{ url_for('history') }}" class="secondary-btn">
-                <i class="bi bi-clock-history"></i>
-                View History
+            <a href="{{ url_for('scan_qr_page') }}"
+               class="home-secondary-btn">
+
+                <i class="bi bi-qr-code"></i>
+                QR Scanner
+
             </a>
 
         </div>
@@ -503,25 +364,24 @@
     </div>
 
 
-    <!-- AI VISUAL -->
+    <!-- AI SCANNER VISUAL -->
 
-    <div class="visual">
+    <div>
 
-        <div class="scan-card">
+        <div class="scanner-card">
 
-            <div class="scan-header">
+            <div class="scanner-header">
 
-                <div class="scan-title">
+                <div class="scanner-title">
                     <i class="bi bi-cpu"></i>
                     AI Medicine Scanner
                 </div>
 
-                <div class="live">
+                <div class="scanner-live">
                     ● AI READY
                 </div>
 
             </div>
-
 
             <div class="medicine-box">
 
@@ -531,16 +391,18 @@
 
             </div>
 
+            <div class="scanner-status">
 
-            <div class="scan-status">
-
-                <div class="check">
+                <div class="scanner-check">
                     <i class="bi bi-check-lg"></i>
                 </div>
 
-                <div class="status-text">
+                <div>
                     <strong>AI Scanner Ready</strong>
-                    <small>Upload a medicine image to begin analysis</small>
+
+                    <small>
+                        Upload a medicine image to begin analysis
+                    </small>
                 </div>
 
             </div>
@@ -554,9 +416,9 @@
 
 <!-- FEATURES -->
 
-<section class="features">
+<section class="home-features">
 
-    <div class="section-heading">
+    <div class="home-section-heading">
 
         <h2>One scan. Multiple checks.</h2>
 
@@ -568,11 +430,11 @@
     </div>
 
 
-    <div class="feature-grid">
+    <div class="home-feature-grid">
 
-        <div class="feature">
+        <div class="home-feature">
 
-            <div class="feature-icon">
+            <div class="home-feature-icon">
                 <i class="bi bi-cpu"></i>
             </div>
 
@@ -586,24 +448,25 @@
         </div>
 
 
-        <div class="feature">
+        <div class="home-feature">
 
-            <div class="feature-icon">
+            <div class="home-feature-icon">
                 <i class="bi bi-upc-scan"></i>
             </div>
 
-            <h3>Barcode Scan</h3>
+            <h3>Barcode / QR Scan</h3>
 
             <p>
-                Extract and validate medicine barcode information.
+                Scan and validate medicine barcode and QR
+                information.
             </p>
 
         </div>
 
 
-        <div class="feature">
+        <div class="home-feature">
 
-            <div class="feature-icon">
+            <div class="home-feature-icon">
                 <i class="bi bi-file-text"></i>
             </div>
 
@@ -617,9 +480,9 @@
         </div>
 
 
-        <div class="feature">
+        <div class="home-feature">
 
-            <div class="feature-icon">
+            <div class="home-feature-icon">
                 <i class="bi bi-calendar-check"></i>
             </div>
 
@@ -639,39 +502,28 @@
 
 <!-- STATS -->
 
-<section class="stats">
+<section class="home-stats">
 
-    <div class="stat">
+    <div class="home-stat">
         <strong>AI</strong>
         <span>Image Analysis</span>
     </div>
 
-    <div class="stat">
+    <div class="home-stat">
         <strong>OCR</strong>
         <span>Text Extraction</span>
     </div>
 
-    <div class="stat">
+    <div class="home-stat">
         <strong>QR</strong>
         <span>Code Detection</span>
     </div>
 
-    <div class="stat">
+    <div class="home-stat">
         <strong>PDF</strong>
         <span>Reports</span>
     </div>
 
 </section>
 
-
-<!-- FOOTER -->
-
-<footer>
-
-    <i class="bi bi-shield-lock"></i>
-    MedSecure AI — AI-powered medicine verification system
-
-</footer>
-
-</body>
-</html>
+{% endblock %}
